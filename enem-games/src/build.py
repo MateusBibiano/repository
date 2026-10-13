@@ -31,6 +31,17 @@ css = "\n".join(
 html = (SRC / "player.html").read_text()
 html = html.replace("/*@FONTS*/", css)
 html = html.replace("/*@SCENES*/", (SRC / "scenes.js").read_text())
+html = html.replace("/*@STAGE*/", (SRC / "stage3d.js").read_text())
+html = html.replace("@BUNGEE_B64@", base64.b64encode((SRC / "fonts" / "Bungee-Regular.ttf").read_bytes()).decode())
 html = html.replace("@AUDIO_SRC@", "data:audio/mpeg;base64," + base64.b64encode(mp3.read_bytes()).decode(), 1)
 (ROOT / "enem-games.html").write_text(html)
+
+# bibliotecas 3D para a exportação local (o player publicado usa as mesmas versões via CDN)
+vendor = BUILD / "vendor"
+if not (vendor / "three").exists():
+    vendor.mkdir(exist_ok=True)
+    for pkg, d in (("three@0.128.0", "three"), ("opentype.js@1.3.4", "opentype")):
+        tgz = subprocess.run(["npm", "pack", pkg, "--silent"], cwd=vendor, check=True, capture_output=True, text=True).stdout.strip().splitlines()[-1]
+        (vendor / d).mkdir(exist_ok=True)
+        subprocess.run(["tar", "xzf", tgz, "-C", d, "--strip-components=1"], cwd=vendor, check=True)
 print("ok", ROOT / "enem-games.html", len(html) // 1024, "KB")

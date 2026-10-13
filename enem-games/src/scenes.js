@@ -32,6 +32,7 @@
   const TEAMS = ['#ffb627', '#ff5d5d', '#2ec4b6', '#4ea8ff', '#c77dff', '#ff8c42', '#ff5d8f', '#a3e635'];
 
   let ctx;
+  let G3D = false; // no modo 3D, logo, medalha, pizza e picolés são objetos 3D (stage3d.js)
 
   // ---------- utilidades ----------
   const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
@@ -318,9 +319,11 @@
       roomIcon('bubble', 230, 520 + Math.sin(lt * 1.7) * 6, 1.3, AREAS[0].c);
       ball(1050, 520 + Math.cos(lt * 1.6) * 6, 36, AREAS[1].c, lt * 0.8);
     });
-    wordDrop('ENEM', W / 2, 290, 150, C.cream, 0.1, lt);
-    const g = back(p(lt, 0.8, 1.5));
-    withT(W / 2, 430, lerp(0.3, 1, g), 0, () => T('GAMES', 0, 0, { f: DISP, s: 120, c: C.amber, a: clamp(g * 2) }));
+    if (!G3D) {
+      wordDrop('ENEM', W / 2, 290, 150, C.cream, 0.1, lt);
+      const g = back(p(lt, 0.8, 1.5));
+      withT(W / 2, 430, lerp(0.3, 1, g), 0, () => T('GAMES', 0, 0, { f: DISP, s: 120, c: C.amber, a: clamp(g * 2) }));
+    }
     T('Como vai funcionar a nossa noite', W / 2, 535, { s: 40, w: 600, a: fadeIn(lt, 1.8, 0.6) });
     alpha(fadeIn(lt, 2.6, 0.5), () => {
       fillRR(W / 2 - 190, 580, 380, 48, 24, C.line);
@@ -790,7 +793,7 @@
   function sPizza(lt) {
     title('Depois da premiação...', 112, fadeIn(lt, 0), 44);
     sub('hora de recarregar as energias', 160, fadeIn(lt, 0.3));
-    withT(W / 2, 380, pop(lt, 0.8, 0.7), 0, () => pizza(0, 0, 160, lt * 0.4, eo(p(lt, 2.0, 2.6))));
+    if (!G3D) withT(W / 2, 380, pop(lt, 0.8, 0.7), 0, () => pizza(0, 0, 160, lt * 0.4, eo(p(lt, 2.0, 2.6))));
     withT(W / 2, 610, pop(lt, 1.6, 0.5), 0, () => { fillRR(-300, -50, 600, 100, 26, 'rgba(11,18,48,0.92)'); T('PIZZA!', 0, 4, { f: DISP, s: 72, c: C.amber }); });
   }
 
@@ -800,7 +803,7 @@
     sub('na sala do PV', 160, fadeIn(lt, 0.3), C.amber, 30);
     const m = fadeIn(lt, 0.4, 0.6);
     alpha(m, () => {
-      medal(330, 340 + (1 - m) * -200, 1.25, Math.sin(lt * 3) * 0.08 * (1 - p(lt, 0, 5)));
+      if (!G3D) medal(330, 340 + (1 - m) * -200, 1.25, Math.sin(lt * 3) * 0.08 * (1 - p(lt, 0, 5)));
       T('MEDALHA DE CONCLUSÃO', 330, 505, { f: DISP, s: 24, c: C.amber });
       T('para toda equipe que concluir', 330, 548, { s: 30 });
       T('todos os desafios', 330, 582, { s: 30 });
@@ -834,6 +837,7 @@
   // 18. 22h: sobremesa
   const POPS = (() => { const r = rng(99), a = []; const cols = ['#ff5d8f', '#ffb627', '#4ea8ff', '#2ec4b6', '#c77dff', '#ff8c42']; for (let i = 0; i < 18; i++) a.push({ x: 60 + r() * 1160, d: r() * 2.2, sp: 200 + r() * 180, rot: r() * 6, vr: (r() - 0.5) * 3, s: 0.55 + r() * 0.45, c: cols[i % cols.length] }); return a; })();
   function sDessert(lt) {
+    if (!G3D) {
     ctx.save(); ctx.beginPath(); ctx.rect(0, 72, W, H - 72); ctx.clip();
     POPS.forEach((o) => {
       const tt = lt - 0.2 - o.d;
@@ -841,8 +845,9 @@
       popsicle(o.x, -100 + ((tt * o.sp) % 920), o.s, o.rot + tt * o.vr, o.c);
     });
     ctx.restore();
+    }
     withT(W / 2, 112, 1, 0, () => { fillRR(-280, -36, 560, 72, 24, 'rgba(11,18,48,0.92)'); T('22H · SOBREMESA', 0, 2, { f: DISP, s: 42, a: fadeIn(lt, 0) }); });
-    withT(W / 2, 370, pop(lt, 0.5, 0.6), Math.sin(lt * 2) * 0.08, () => popsicle(0, 0, 2.3, 0, '#ff5d8f'));
+    if (!G3D) withT(W / 2, 370, pop(lt, 0.5, 0.6), Math.sin(lt * 2) * 0.08, () => popsicle(0, 0, 2.3, 0, '#ff5d8f'));
     withT(W / 2, 600, pop(lt, 1.2, 0.5), 0, () => { fillRR(-300, -56, 600, 112, 28, 'rgba(11,18,48,0.92)'); T('PICOLÉ!', 0, 4, { f: DISP, s: 80, c: C.amber }); });
   }
 
@@ -892,14 +897,32 @@
     { id: 'sobremesa', d: 6, g: 8, f: sDessert, clock: 1320, st: 'SOBREMESA', cues: [[0.5, 'pop'], [1.2, 'fanfare']] },
     { id: 'fim', d: 9, g: 8, f: sEnd, clock: 1350, st: 'ENCERRAMENTO', cues: [[0.2, 'hit'], [3.6, 'finale']] },
   ];
-  let acc = 0;
-  SCENES.forEach((s) => { s.a = acc; acc += s.d; s.b = acc; });
-  const DUR = acc;
-  const CHAPTERS = GROUPS.map((n, gi) => { const ss = SCENES.filter((s) => s.g === gi); return { n, a: ss[0].a, b: ss[ss.length - 1].b }; });
+  // ---------- linha do tempo: cenas + vinhetas de capítulo, com sobreposição para as transições ----------
+  const OVER = 0.9; // duração de cada transição
+  const GROUP_COLORS = ['#ffb627', '#ff5d5d', '#2ec4b6', '#4ea8ff', '#ff8c42', '#c77dff', '#a3e635', '#ffb627', '#ff5d8f'];
+  const SEGS = [];
+  SCENES.forEach((s, i) => {
+    if (i > 0 && s.g !== SCENES[i - 1].g) {
+      SEGS.push({ kind: 'bumper', id: 'cap-' + (s.g + 1), g: s.g, d: 2.9, clock: typeof s.clock === 'function' ? s.clock(0) : s.clock, st: 'PRÓXIMO CAPÍTULO', cues: [[0.05, 'riser'], [0.85, 'boom']] });
+    }
+    SEGS.push({ kind: 'scene', id: s.id, g: s.g, f: s.f, d: s.d + OVER, clock: s.clock, st: s.st, cues: s.cues });
+  });
+  const TRANS = ['cube', 'slide', 'flip', 'swing'];
+  let acc = 0, ti = 0;
+  SEGS.forEach((s, i) => {
+    s.a = acc; s.b = acc + s.d; acc = s.b - OVER;
+    if (i > 0) s.tin = s.kind === 'bumper' || SEGS[i - 1].kind === 'bumper' ? 'fly' : TRANS[ti++ % TRANS.length];
+  });
+  const DUR = SEGS[SEGS.length - 1].b;
+  const CHAPTERS = GROUPS.map((n, gi) => { const ss = SEGS.filter((s) => s.g === gi); return { n, a: ss[0].a, b: ss[ss.length - 1].b }; });
   const CUES = [];
-  SCENES.forEach((s, i) => { if (i > 0) CUES.push({ t: s.a - 0.3, k: 'whoosh' }); s.cues.forEach(([t, k, d]) => CUES.push({ t: s.a + t, k, d })); });
+  SEGS.forEach((s, i) => {
+    if (i > 0 && s.kind === 'scene' && SEGS[i - 1].kind === 'scene') CUES.push({ t: s.a + 0.15, k: 'whoosh' });
+    if (i > 0 && SEGS[i - 1].kind === 'bumper') CUES.push({ t: s.a + 0.1, k: 'whoosh' });
+    s.cues.forEach(([t, k, d]) => CUES.push({ t: s.a + t, k, d }));
+  });
 
-  function sceneIndex(t) { for (let i = SCENES.length - 1; i >= 0; i--) if (t >= SCENES[i].a) return i; return 0; }
+  function segAt(t) { let i = 0; for (let k = 0; k < SEGS.length; k++) if (t >= SEGS[k].a) i = k; return i; }
 
   function hud(t, sc, lt) {
     T('ENEM GAMES', 40, 40, { f: DISP, s: 20, c: C.amber, al: 'left' });
@@ -922,17 +945,40 @@
     });
   }
 
+  function bumper2D(s, lt) { // usado só sem WebGL
+    T('CAPÍTULO', W / 2, 250, { s: 28, c: C.dim, ls: 8, a: fadeIn(lt, 0.2) });
+    withT(W / 2, 360, pop(lt, 0.1, 0.6), 0, () => T(String(s.g + 1).padStart(2, '0'), 0, 0, { f: DISP, s: 150, c: GROUP_COLORS[s.g] }));
+    T(GROUPS[s.g].toUpperCase(), W / 2, 490, { f: DISP, s: 48, a: fadeIn(lt, 0.5) });
+  }
+  function drawSeg(context, i, lt) {
+    ctx = context;
+    const s = SEGS[i];
+    if (s.kind === 'scene') s.f(lt); else if (!G3D) bumper2D(s, lt);
+  }
+  function drawHud(context, t) {
+    ctx = context;
+    t = clamp(t, 0, DUR);
+    const s = SEGS[segAt(t)];
+    hud(t, s, t - s.a);
+  }
+  // render 2D completo (sem WebGL): fundo + cenas com fusão + HUD
   function render(context, t) {
     ctx = context;
     t = clamp(t, 0, DUR);
     background(t);
-    const i = sceneIndex(t);
-    const sc = SCENES[i];
-    const lt = t - sc.a;
-    const fade = i === SCENES.length - 1 ? 1 : 1 - p(t, sc.b - 0.3, sc.b);
-    alpha(Math.min(i === 0 ? 1 : p(t, sc.a, sc.a + 0.25), fade), () => sc.f(lt));
-    hud(t, sc, lt);
+    const i = segAt(t), lt = t - SEGS[i].a;
+    if (i > 0 && lt < OVER) {
+      const q = lt / OVER;
+      alpha(1 - q, () => drawSeg(context, i - 1, t - SEGS[i - 1].a));
+      alpha(q, () => drawSeg(context, i, lt));
+    } else drawSeg(context, i, lt);
+    drawHud(context, t);
   }
 
-  window.EnemGames = { render, W, H, DUR, CHAPTERS, SCENES: SCENES.map(({ id, a, b }) => ({ id, a, b })), CUES };
+  window.EnemGames = {
+    render, drawSeg, drawHud, segAt, set3D: (v) => { G3D = !!v; },
+    W, H, DUR, OVER, CHAPTERS, GROUPS, GROUP_COLORS, CUES, C, AREAS,
+    SEGS: SEGS.map(({ id, kind, g, a, b, d, tin }) => ({ id, kind, g, a, b, d, tin })),
+    SCENES: SEGS.filter((s) => s.kind === 'scene').map(({ id, a, b }) => ({ id, a, b })),
+  };
 })();

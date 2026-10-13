@@ -161,6 +161,19 @@ def fx(k, t, d=None):
     elif k == "sparkle":
         for i in range(6):
             add(tone(note(96 + (i % 3) * 3), 0.1, "sine", 0.001, 0.05), t + i * 0.05, 0.12)
+    elif k == "riser":
+        n = int(0.85 * SR)
+        tt = np.arange(n) / SR
+        sweep = np.sin(2 * np.pi * np.cumsum(200 + 1400 * (tt / 0.85) ** 2) / SR)
+        add((sweep * 0.3 + rng.uniform(-1, 1, n) * 0.5) * (tt / 0.85) ** 2, t, 0.22)
+    elif k == "boom":
+        n = int(1.2 * SR)
+        tt = np.arange(n) / SR
+        f = 38 + 60 * np.exp(-tt * 8)
+        add(np.sin(2 * np.pi * np.cumsum(f) / SR) * np.exp(-tt * 3.2), t, 0.75)
+        add(noise(0.3, 0.08), t, 0.25)
+        for m in (60, 67, 72):
+            add(tone(note(m), 1.0, "square", 0.004, 0.45), t, 0.07)
     elif k == "finale":
         for i, m in enumerate((72, 76, 79, 84, 88)):
             add(tone(note(m), 0.6, "square", 0.004, 0.35), t + i * 0.06, 0.1)
