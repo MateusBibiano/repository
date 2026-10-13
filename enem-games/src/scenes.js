@@ -1,12 +1,13 @@
-/* ENEM GAMES 2026 — animação do regulamento em 60 s.
+/* ENEM GAMES 2026 — animação do funcionamento da noite.
    Tudo é desenhado a partir do tempo t (segundos), então qualquer quadro
-   pode ser renderizado de forma determinística (player e exportação MP4). */
+   pode ser renderizado de forma determinística (player e exportação MP4).
+   A lista SCENES define a ordem, a duração e os sons (cues) de cada cena. */
 (function () {
-  const W = 1280, H = 720, DUR = 60;
+  const W = 1280, H = 720;
   const DISP = '"Bungee", Impact, sans-serif';
   const BODY = '"Barlow Condensed", "Arial Narrow", sans-serif';
   const C = {
-    night: '#0b1230', night2: '#16214f', line: '#2b3a7a', cream: '#f7f1e3', dim: '#9aa6d6',
+    night: '#0b1230', night2: '#16214f', panel: 'rgba(22,33,79,0.92)', line: '#2b3a7a', cream: '#f7f1e3', dim: '#9aa6d6',
     amber: '#ffb627', coral: '#ff5d5d', ink: '#141c3f', paper: '#f4ecd8', ok: '#3ddc84',
   };
   const AREAS = [
@@ -15,17 +16,20 @@
     { k: 'NAT', n: 'Natureza', c: '#2ec4b6' },
     { k: 'MAT', n: 'Matemática', c: '#4ea8ff' },
   ];
-  const TEAMS = ['#ffb627', '#ff5d5d', '#2ec4b6', '#4ea8ff', '#c77dff', '#ff8c42'];
-  const CHAPTERS = [
-    { a: 0, b: 5, n: 'Enem Games' },
-    { a: 5, b: 15, n: 'Abertura' },
-    { a: 15, b: 24, n: 'Os desafios' },
-    { a: 24, b: 36, n: 'A jornada' },
-    { a: 36, b: 45, n: 'Tempo e vagas' },
-    { a: 45, b: 50, n: 'Conduta' },
-    { a: 50, b: 55, n: 'Premiação' },
-    { a: 55, b: 60, n: 'Pizza & picolé' },
+  // salas do evento (conforme o mapa de estandes)
+  const ROOMS = [
+    { id: 'POR', a: 0, n: 'Língua Portuguesa', short: 'Português', loc: 'Sala dos Professores', who: 'Renan', ic: 'book' },
+    { id: 'ESP', a: 0, n: 'Espanhol', short: 'Espanhol', loc: 'Sala M12', who: 'Eloiza + Paulo', ic: 'bubble' },
+    { id: 'ART', a: 0, n: 'Arte', short: 'Arte', loc: 'Sala F92', who: 'André', ic: 'palette' },
+    { id: 'HG', a: 1, n: 'História e Geografia', short: 'Hist. e Geo.', loc: 'Sala M31', who: 'Castañeda', ic: 'globe' },
+    { id: 'FIL', a: 1, n: 'Filosofia', short: 'Filosofia', loc: 'Sala F61', who: 'Arthur', ic: 'think' },
+    { id: 'QUI', a: 2, n: 'Química', short: 'Química', loc: 'Lab. de Química', who: 'Brunão', ic: 'flask' },
+    { id: 'BIO', a: 2, n: 'Biologia', short: 'Biologia', loc: 'Sala F82', who: 'Dani Sinzatto', ic: 'leaf' },
+    { id: 'FIS', a: 2, n: 'Física', short: 'Física', loc: 'Sala de Arte', who: 'Kleber + Pâmela', ic: 'atom' },
+    { id: 'MAT', a: 3, n: 'Matemática', short: 'Matemática', loc: 'Sala M21', who: 'Rafinha', ic: 'calc' },
   ];
+  const roomsOf = (a) => ROOMS.filter((r) => r.a === a);
+  const TEAMS = ['#ffb627', '#ff5d5d', '#2ec4b6', '#4ea8ff', '#c77dff', '#ff8c42', '#ff5d8f', '#a3e635'];
 
   let ctx;
 
@@ -38,6 +42,7 @@
   const back = (x) => { const c1 = 1.9, c3 = c1 + 1; return x <= 0 ? 0 : 1 + c3 * Math.pow(x - 1, 3) + c1 * Math.pow(x - 1, 2); };
   function rng(seed) { return function () { seed |= 0; seed = (seed + 0x6d2b79f5) | 0; let t = Math.imul(seed ^ (seed >>> 15), 1 | seed); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
   const mmss = (s) => { s = Math.max(0, Math.round(s)); return String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0'); };
+  const hmmss = (s) => { s = Math.max(0, Math.round(s)); return Math.floor(s / 3600) + ':' + mmss(s % 3600); };
   const hhmm = (m) => { m = Math.floor(m); return String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0'); };
 
   function T(s, x, y, o = {}) {
@@ -49,29 +54,30 @@
     ctx.textAlign = o.al || 'center';
     ctx.textBaseline = o.bl || 'middle';
     ctx.letterSpacing = (o.ls || 0) + 'px';
-    if (o.shadow) { ctx.shadowColor = o.shadow; ctx.shadowBlur = 24; }
     ctx.fillText(s, x, y);
     ctx.restore();
   }
+  function textW(s, size, f = BODY, w = 600) { ctx.save(); ctx.font = `${w} ${size}px ${f}`; const m = ctx.measureText(s).width; ctx.restore(); return m; }
   function rr(x, y, w, h, r) { ctx.beginPath(); ctx.roundRect(x, y, w, h, r); }
   function fillRR(x, y, w, h, r, c) { rr(x, y, w, h, r); ctx.fillStyle = c; ctx.fill(); }
   function strokeRR(x, y, w, h, r, c, lw = 2, dash) { rr(x, y, w, h, r); ctx.strokeStyle = c; ctx.lineWidth = lw; ctx.setLineDash(dash || []); ctx.stroke(); ctx.setLineDash([]); }
   function circle(x, y, r, c) { ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fillStyle = c; ctx.fill(); }
   function ring(x, y, r, c, lw = 2, dash) { ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.strokeStyle = c; ctx.lineWidth = lw; ctx.setLineDash(dash || []); ctx.stroke(); ctx.setLineDash([]); }
+  function line(x1, y1, x2, y2, c, lw = 3, dash) { ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.strokeStyle = c; ctx.lineWidth = lw; ctx.setLineDash(dash || []); ctx.stroke(); ctx.setLineDash([]); }
   function withT(x, y, s, rot, fn) { ctx.save(); ctx.translate(x, y); if (rot) ctx.rotate(rot); if (s !== 1) ctx.scale(s, s); fn(); ctx.restore(); }
-  function alpha(a, fn) { ctx.save(); ctx.globalAlpha *= a; fn(); ctx.restore(); }
+  function alpha(a, fn) { if (a <= 0) return; ctx.save(); ctx.globalAlpha *= a; fn(); ctx.restore(); }
+  const pop = (lt, t0, dur = 0.45) => back(p(lt, t0, t0 + dur));
+  const fadeIn = (lt, t0, dur = 0.4) => eo(p(lt, t0, t0 + dur));
 
   // ---------- ícones ----------
-  function team(x, y, col, s = 1, a = 1) {
+  function team(x, y, col, s = 1, a = 1) { // trio
     alpha(a, () => withT(x, y, s, 0, () => {
-      ring(0, 0, 30, col + '66', 2);
-      for (let i = 0; i < 5; i++) {
-        const an = -Math.PI / 2 + (i * Math.PI * 2) / 5;
-        circle(Math.cos(an) * 17, Math.sin(an) * 17, 8, col);
-      }
+      ring(0, 0, 28, col + '66', 2);
+      for (let i = 0; i < 3; i++) { const an = -Math.PI / 2 + (i * Math.PI * 2) / 3; circle(Math.cos(an) * 13, Math.sin(an) * 13, 9, col); }
     }));
   }
   function check(x, y, s, col = C.ok) {
+    if (s <= 0) return;
     withT(x, y, s, 0, () => {
       circle(0, 0, 16, col);
       ctx.beginPath(); ctx.moveTo(-7, 0); ctx.lineTo(-2, 6); ctx.lineTo(8, -6);
@@ -79,6 +85,7 @@
     });
   }
   function cross(x, y, s, col = C.coral) {
+    if (s <= 0) return;
     withT(x, y, s, 0, () => {
       ctx.beginPath(); ctx.moveTo(-40, -40); ctx.lineTo(40, 40); ctx.moveTo(40, -40); ctx.lineTo(-40, 40);
       ctx.strokeStyle = col; ctx.lineWidth = 12; ctx.lineCap = 'round'; ctx.stroke();
@@ -86,10 +93,9 @@
   }
   function lock(x, y, s, open, col = C.cream) {
     withT(x, y, s, 0, () => {
-      ctx.beginPath();
       const lift = open * 12;
-      ctx.arc(0, -10 - lift, 10, Math.PI, 0);
-      ctx.lineTo(10, -2 - lift * (open > 0.5 ? 1 : 0));
+      ctx.beginPath(); ctx.arc(0, -10 - lift, 10, Math.PI, 0);
+      ctx.lineTo(10, -2 - (open > 0.5 ? lift : 0));
       ctx.moveTo(-10, -10 - lift); ctx.lineTo(-10, -2 - lift);
       ctx.strokeStyle = col; ctx.lineWidth = 5; ctx.stroke();
       fillRR(-15, -4, 30, 24, 5, col);
@@ -104,11 +110,63 @@
       ctx.strokeStyle = col; ctx.lineWidth = 2.5; ctx.stroke();
     });
   }
-  function book(x, y, s, col = C.cream, rot = 0) {
-    withT(x, y, s, rot, () => {
-      ctx.beginPath(); ctx.moveTo(0, -18); ctx.quadraticCurveTo(-18, -26, -36, -20); ctx.lineTo(-36, 22); ctx.quadraticCurveTo(-18, 16, 0, 24);
-      ctx.quadraticCurveTo(18, 16, 36, 22); ctx.lineTo(36, -20); ctx.quadraticCurveTo(18, -26, 0, -18); ctx.lineTo(0, 24);
-      ctx.strokeStyle = col; ctx.lineWidth = 3.5; ctx.lineJoin = 'round'; ctx.stroke();
+  function runner(x, y, s, col) {
+    withT(x, y, s, 0, () => {
+      circle(8, -30, 9, col);
+      ctx.strokeStyle = col; ctx.lineWidth = 8; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+      ctx.beginPath(); ctx.moveTo(4, -16); ctx.lineTo(-4, 8); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(-4, 8); ctx.lineTo(12, 18); ctx.lineTo(8, 34); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(-4, 8); ctx.lineTo(-16, 22); ctx.lineTo(-28, 20); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(2, -10); ctx.lineTo(18, -4); ctx.lineTo(24, -14); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(2, -10); ctx.lineTo(-12, -4); ctx.lineTo(-20, -14); ctx.stroke();
+    });
+  }
+  function roomIcon(kind, x, y, s, col) {
+    withT(x, y, s, 0, () => {
+      ctx.strokeStyle = col; ctx.fillStyle = col; ctx.lineWidth = 4; ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+      switch (kind) {
+        case 'book':
+          ctx.beginPath(); ctx.moveTo(0, -18); ctx.quadraticCurveTo(-18, -26, -34, -20); ctx.lineTo(-34, 22); ctx.quadraticCurveTo(-18, 16, 0, 24);
+          ctx.quadraticCurveTo(18, 16, 34, 22); ctx.lineTo(34, -20); ctx.quadraticCurveTo(18, -26, 0, -18); ctx.lineTo(0, 24); ctx.stroke();
+          break;
+        case 'bubble':
+          rr(-34, -28, 68, 44, 12); ctx.stroke();
+          ctx.beginPath(); ctx.moveTo(-14, 16); ctx.lineTo(-22, 32); ctx.lineTo(2, 16); ctx.stroke();
+          T('¡Hola!', 0, -5, { s: 20, w: 800, c: col });
+          break;
+        case 'palette':
+          ctx.beginPath(); ctx.ellipse(0, 0, 34, 26, -0.2, 0, Math.PI * 2); ctx.stroke();
+          [[-16, -8, '#ff5d5d'], [0, -14, '#ffb627'], [16, -6, '#4ea8ff'], [14, 10, '#3ddc84']].forEach(([a, b, c]) => circle(a, b, 5.5, c));
+          ring(-12, 12, 6, col, 3);
+          break;
+        case 'globe':
+          ring(0, 0, 28, col, 4);
+          ctx.beginPath(); ctx.ellipse(0, 0, 12, 28, 0, 0, Math.PI * 2); ctx.moveTo(-28, 0); ctx.lineTo(28, 0);
+          ctx.moveTo(-24, -14); ctx.lineTo(24, -14); ctx.moveTo(-24, 14); ctx.lineTo(24, 14); ctx.lineWidth = 3; ctx.stroke();
+          break;
+        case 'think':
+          ring(0, 0, 28, col, 4);
+          T('?', 0, 3, { f: DISP, s: 34, c: col });
+          break;
+        case 'flask':
+          ctx.beginPath(); ctx.moveTo(-9, -30); ctx.lineTo(-9, -8); ctx.lineTo(-28, 26); ctx.lineTo(28, 26); ctx.lineTo(9, -8); ctx.lineTo(9, -30); ctx.stroke();
+          ctx.beginPath(); ctx.moveTo(-14, 4); ctx.lineTo(14, 4); ctx.lineTo(24, 22); ctx.lineTo(-24, 22); ctx.closePath(); ctx.globalAlpha *= 0.6; ctx.fill();
+          break;
+        case 'leaf':
+          ctx.beginPath(); ctx.moveTo(-26, 26); ctx.bezierCurveTo(-30, -16, 4, -30, 28, -28); ctx.bezierCurveTo(28, 4, 8, 28, -26, 26); ctx.stroke();
+          ctx.beginPath(); ctx.moveTo(-26, 26); ctx.lineTo(14, -14); ctx.stroke();
+          break;
+        case 'atom':
+          ctx.lineWidth = 3;
+          for (let i = 0; i < 3; i++) { ctx.beginPath(); ctx.ellipse(0, 0, 32, 12, (i * Math.PI) / 3, 0, Math.PI * 2); ctx.stroke(); }
+          circle(0, 0, 6, col);
+          break;
+        case 'calc':
+          rr(-24, -32, 48, 64, 8); ctx.stroke();
+          fillRR(-16, -24, 32, 14, 3, col);
+          for (let i = 0; i < 3; i++) for (let j = 0; j < 3; j++) circle(-12 + i * 12, 2 + j * 11, 3.5, col);
+          break;
+      }
     });
   }
   function phone(x, y, s, col = C.cream, rot = 0) {
@@ -122,33 +180,56 @@
     withT(x, y, s, 0, () => {
       fillRR(-110, -70, 220, 140, 10, C.paper);
       ctx.beginPath(); ctx.moveTo(-110, 70); ctx.lineTo(0, 0); ctx.lineTo(110, 70); ctx.strokeStyle = '#d7c9a6'; ctx.lineWidth = 3; ctx.stroke();
-      // aba: flap 0 = aberta (para cima), 1 = fechada
       const fy = lerp(-160, 10, flap);
       ctx.beginPath(); ctx.moveTo(-110, -70); ctx.lineTo(0, fy); ctx.lineTo(110, -70); ctx.closePath();
       ctx.fillStyle = flap > 0.5 ? '#e8dcbc' : '#efe4c8'; ctx.fill(); ctx.strokeStyle = '#d7c9a6'; ctx.stroke();
       if (flap > 0.95) { circle(0, 6, 16, C.coral); T('G9', 0, 7, { f: DISP, s: 13, c: C.paper }); }
     });
   }
-  function passport(x, y, s, col = '#1f6f78', rot = 0) {
-    withT(x, y, s, rot, () => {
-      fillRR(-26, -34, 52, 68, 5, col);
-      ring(0, -6, 11, C.amber, 2.5);
-      ctx.beginPath(); ctx.moveTo(-11, -6); ctx.lineTo(11, -6); ctx.moveTo(0, -17); ctx.lineTo(0, 5); ctx.strokeStyle = C.amber; ctx.lineWidth = 2; ctx.stroke();
-      fillRR(-14, 14, 28, 4, 2, C.amber);
+  function clockIcon(x, y, s, col, h = 0) {
+    withT(x, y, s, 0, () => {
+      ring(0, 0, 30, col, 5);
+      ctx.strokeStyle = col; ctx.lineWidth = 5; ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(0, -20); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(Math.cos(h) * 14, Math.sin(h) * 14); ctx.stroke();
     });
   }
-  function clipboard(x, y, s) {
+  function boardIcon(x, y, s, col) {
     withT(x, y, s, 0, () => {
-      fillRR(-170, -150, 340, 300, 16, C.paper);
-      fillRR(-50, -168, 100, 34, 8, C.amber);
+      strokeRR(-34, -30, 68, 44, 4, col, 4);
+      line(-20, 2, -6, -10, col, 4); line(-6, -10, 6, -2, col, 4); line(6, -2, 20, -16, col, 4);
+      line(0, 14, -16, 36, col, 4); line(0, 14, 16, 36, col, 4);
+    });
+  }
+  function diceIcon(x, y, s, col, rot = 0) {
+    withT(x, y, s, rot, () => {
+      strokeRR(-26, -26, 52, 52, 10, col, 4);
+      [[-12, -12], [12, -12], [0, 0], [-12, 12], [12, 12]].forEach(([a, b]) => circle(a, b, 5, col));
+    });
+  }
+  function clipIcon(x, y, s, col) {
+    withT(x, y, s, 0, () => {
+      strokeRR(-24, -30, 48, 62, 6, col, 4);
+      fillRR(-12, -36, 24, 12, 4, col);
+      for (let i = 0; i < 3; i++) { line(-12, -10 + i * 14, -6, -4 + i * 14, col, 3); line(-6, -4 + i * 14, 0, -14 + i * 14, col, 3); line(4, -8 + i * 14, 14, -8 + i * 14, col, 3); }
+    });
+  }
+  function flagIcon(x, y, s, wave = 0) {
+    withT(x, y, s, 0, () => {
+      fillRR(-30, -34, 5, 72, 2, C.cream);
+      const cw = 12, rows = 4, cols = 5;
+      for (let i = 0; i < cols; i++) for (let j = 0; j < rows; j++) {
+        const yo = Math.sin(wave + i * 0.8) * 3;
+        ctx.fillStyle = (i + j) % 2 ? C.cream : C.ink;
+        ctx.fillRect(-25 + i * cw, -34 + j * cw + yo, cw, cw);
+      }
     });
   }
   function medal(x, y, s, swing) {
     withT(x, y, s, swing, () => {
       ctx.beginPath(); ctx.moveTo(-46, -150); ctx.lineTo(-10, -40); ctx.lineTo(10, -40); ctx.lineTo(-20, -150); ctx.closePath(); ctx.fillStyle = C.coral; ctx.fill();
       ctx.beginPath(); ctx.moveTo(46, -150); ctx.lineTo(10, -40); ctx.lineTo(-10, -40); ctx.lineTo(20, -150); ctx.closePath(); ctx.fillStyle = '#4ea8ff'; ctx.fill();
-      circle(0, 10, 62, '#e09a12');
-      circle(0, 10, 52, C.amber);
+      circle(0, 10, 62, '#e09a12'); circle(0, 10, 52, C.amber);
       star(0, 10, 28, 12, '#fff3c4');
       T('ENEM GAMES', 0, 50, { f: DISP, s: 9, c: '#7a4d00' });
     });
@@ -171,19 +252,17 @@
   function pizza(x, y, r, rot, popped = 0) {
     withT(x, y, 1, rot, () => {
       for (let i = 0; i < 8; i++) {
-        const a0 = (i * Math.PI) / 4, a1 = a0 + Math.PI / 4;
+        const a0 = (i * Math.PI) / 4, a1 = a0 + Math.PI / 4, mid = (a0 + a1) / 2;
         const off = i === 1 ? popped * r * 0.28 : 0;
-        const mid = (a0 + a1) / 2;
         ctx.save(); ctx.translate(Math.cos(mid) * off, Math.sin(mid) * off);
         ctx.beginPath(); ctx.moveTo(0, 0); ctx.arc(0, 0, r, a0, a1); ctx.closePath(); ctx.fillStyle = '#d98b2b'; ctx.fill();
         ctx.beginPath(); ctx.moveTo(0, 0); ctx.arc(0, 0, r * 0.86, a0, a1); ctx.closePath(); ctx.fillStyle = '#ffd166'; ctx.fill();
         ctx.strokeStyle = '#e8b04b'; ctx.lineWidth = 3; ctx.stroke();
         ctx.save(); ctx.beginPath(); ctx.moveTo(0, 0); ctx.arc(0, 0, r * 0.86, a0, a1); ctx.closePath(); ctx.clip();
         PEPS.forEach(([px, py]) => circle(px * r, py * r, r * 0.1, '#d64045'));
-        ctx.restore();
-        ctx.restore();
+        ctx.restore(); ctx.restore();
       }
-      PEPS.slice(0, 5).forEach(([px, py], i) => circle(-py * r * 0.9, px * r * 0.9, r * 0.035, i % 2 ? '#3a7d44' : '#3a7d44'));
+      PEPS.slice(0, 5).forEach(([px, py]) => circle(-py * r * 0.9, px * r * 0.9, r * 0.035, '#3a7d44'));
     });
   }
   function popsicle(x, y, s, rot, col) {
@@ -194,53 +273,38 @@
       fillRR(-16, -40, 7, 50, 4, '#ffffff66');
     });
   }
+  function bulletText(lines, x, y, lt, t0, gap, step, size = 32) {
+    lines.forEach((ln, i) => {
+      const q = fadeIn(lt, t0 + i * step, 0.5);
+      alpha(q, () => {
+        circle(x + 10, y + i * gap, 7, ln.c || C.amber);
+        T(ln.t, x + 34 - (1 - q) * 20, y + i * gap, { s: size, al: 'left', w: 600, c: C.cream });
+      });
+    });
+  }
 
-  // ---------- fundo e HUD ----------
+  // ---------- fundo ----------
   const STARS = (() => { const r = rng(42), a = []; for (let i = 0; i < 70; i++) a.push([r() * W, r() * H, r() * 1.6 + 0.4, r() * 6]); return a; })();
   function background(t) {
     const g = ctx.createLinearGradient(0, 0, 0, H);
     g.addColorStop(0, C.night); g.addColorStop(1, C.night2);
     ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
     STARS.forEach(([x, y, r, ph]) => circle(x, y, r, `rgba(247,241,227,${0.12 + 0.18 * (0.5 + 0.5 * Math.sin(t * 1.3 + ph))})`));
-    // linhas de quadra
     ctx.strokeStyle = 'rgba(140,160,255,0.07)'; ctx.lineWidth = 3;
     ctx.strokeRect(36, 76, W - 72, H - 112);
     ctx.beginPath(); ctx.moveTo(W / 2, 76); ctx.lineTo(W / 2, H - 36); ctx.stroke();
     ring(W / 2, (H + 40) / 2, 120, 'rgba(140,160,255,0.07)', 3);
   }
-  const CLOCK = [[0, 1050], [5, 1050], [15, 1078], [15.01, 1080], [24, 1080], [36, 1210], [45, 1235], [50, 1255], [51.5, 1260], [55, 1260], [60, 1275]];
-  function eventMinutes(t) {
-    for (let i = 1; i < CLOCK.length; i++) if (t <= CLOCK[i][0]) return lerp(CLOCK[i - 1][1], CLOCK[i][1], p(t, CLOCK[i - 1][0], CLOCK[i][0]));
-    return CLOCK[CLOCK.length - 1][1];
-  }
-  function chapterIndex(t) { for (let i = CHAPTERS.length - 1; i >= 0; i--) if (t >= CHAPTERS[i].a) return i; return 0; }
-  function hud(t) {
-    T('ENEM GAMES', 40, 40, { f: DISP, s: 20, c: C.amber, al: 'left' });
-    T('CURSO G9 · 2026', 212, 41, { s: 18, c: C.dim, al: 'left', ls: 2 });
-    const ci = chapterIndex(t);
-    T(`${ci + 1}/8 · ${CHAPTERS[ci].n.toUpperCase()}`, W / 2, 41, { s: 19, c: C.dim, ls: 3 });
-    const m = eventMinutes(t);
-    const live = m >= 1080 && m < 1260;
-    fillRR(1120, 20, 120, 42, 21, m >= 1260 ? C.coral : live ? C.amber : C.line);
-    T(hhmm(m), 1180, 42, { f: DISP, s: 22, c: live || m >= 1260 ? C.ink : C.cream });
-    T(m < 1080 ? 'ANTES DA LARGADA' : m < 1260 ? 'DESAFIOS EM ANDAMENTO' : 'ENCERRADO', 1106, 42, { s: 16, c: C.dim, al: 'right', ls: 2 });
-    // barra de progresso por capítulo
-    CHAPTERS.forEach((c, i) => {
-      const x0 = 40 + (c.a / DUR) * (W - 80) + 2, w = ((c.b - c.a) / DUR) * (W - 80) - 4;
-      fillRR(x0, H - 14, w, 4, 2, 'rgba(154,166,214,0.25)');
-      const f = p(t, c.a, c.b);
-      if (f > 0) fillRR(x0, H - 14, w * f, 4, 2, C.amber);
-    });
-  }
   function title(s, y, a = 1, size = 44, col = C.cream) { T(s, W / 2, y, { f: DISP, s: size, c: col, a }); }
-  function eyebrow(s, y, a = 1, col = C.amber) { T(s, W / 2, y, { s: 22, c: col, a, ls: 5, w: 600 }); }
+  function sub(s, y, a = 1, col = C.dim, size = 28) { T(s, W / 2, y, { s: size, c: col, a }); }
 
-  // ---------- cena 1: abertura do vídeo ----------
+  // ================= CENAS =================
+
+  // 1. abertura do vídeo
   function wordDrop(word, cx, y, size, col, t0, lt, stagger = 0.1) {
     ctx.font = `400 ${size}px ${DISP}`;
     const ws = [...word].map((ch) => ctx.measureText(ch).width);
-    const total = ws.reduce((a, b) => a + b, 0);
-    let x = cx - total / 2;
+    let x = cx - ws.reduce((a, b) => a + b, 0) / 2;
     [...word].forEach((ch, i) => {
       const q = back(p(lt, t0 + i * stagger, t0 + i * stagger + 0.55));
       T(ch, x + ws[i] / 2, y - (1 - q) * 260, { f: DISP, s: size, c: col, a: clamp(q * 2) });
@@ -248,479 +312,626 @@
     });
   }
   function sIntro(lt) {
-    const sp = eo(p(lt, 0.2, 1.6));
-    alpha(sp, () => {
-      book(250, 250 + Math.sin(lt * 2) * 8, 1.6, AREAS[3].c, -0.2);
-      ball(1030, 250 + Math.cos(lt * 2) * 8, 34, AREAS[0].c, lt * 0.8);
-      phone(210, 520 + Math.sin(lt * 1.7) * 6, 0.9, AREAS[2].c, 0.25);
-      passport(1075, 520 + Math.cos(lt * 1.6) * 6, 1.3, AREAS[1].c, -0.15);
+    alpha(fadeIn(lt, 0.2, 1.2), () => {
+      roomIcon('calc', 240, 250 + Math.sin(lt * 2) * 8, 1.5, AREAS[3].c);
+      roomIcon('flask', 1040, 250 + Math.cos(lt * 2) * 8, 1.5, AREAS[2].c);
+      roomIcon('bubble', 230, 520 + Math.sin(lt * 1.7) * 6, 1.3, AREAS[0].c);
+      ball(1050, 520 + Math.cos(lt * 1.6) * 6, 36, AREAS[1].c, lt * 0.8);
     });
     wordDrop('ENEM', W / 2, 290, 150, C.cream, 0.1, lt);
     const g = back(p(lt, 0.8, 1.5));
     withT(W / 2, 430, lerp(0.3, 1, g), 0, () => T('GAMES', 0, 0, { f: DISP, s: 120, c: C.amber, a: clamp(g * 2) }));
-    T('O regulamento da noite em 1 minuto', W / 2, 535, { s: 38, w: 600, a: eo(p(lt, 1.7, 2.3)) });
-    const b = eo(p(lt, 2.3, 2.9));
-    alpha(b, () => {
-      fillRR(W / 2 - 170, 580, 340, 46, 23, C.line);
-      T('18h às 21h · na escola', W / 2, 604, { s: 26, c: C.cream, ls: 1 });
+    T('Como vai funcionar a nossa noite', W / 2, 535, { s: 40, w: 600, a: fadeIn(lt, 1.8, 0.6) });
+    alpha(fadeIn(lt, 2.6, 0.5), () => {
+      fillRR(W / 2 - 190, 580, 380, 48, 24, C.line);
+      T('18h às 22h30 · Curso G9', W / 2, 605, { s: 28, c: C.cream, ls: 1 });
     });
   }
 
-  // ---------- cena 2: abertura / credenciamento ----------
+  // 2. cronograma de abertura (18h → 18h30)
+  const OPEN_STEPS = [
+    { h: '18h00', t: 'Início', d: 'Às 18h, todo mundo na escola.', ic: (x, y, c, lt) => clockIcon(x, y, 1, c, lt * 0.5) },
+    { h: '', t: 'Explicação da dinâmica', d: 'Explicamos todas as regras do ENEM GAMES.', ic: (x, y, c) => boardIcon(x, y, 1, c) },
+    { h: '', t: 'Sorteio das equipes', d: 'As equipes são sorteadas: trios.', ic: (x, y, c, lt) => diceIcon(x, y, 1, c, Math.sin(lt * 3) * 0.2) },
+    { h: '', t: 'Preparação', d: 'Celulares recolhidos e tudo pronto para começar.', ic: (x, y, c) => clipIcon(x, y, 1, c) },
+    { h: '18h30', t: 'Largada!', d: 'As equipes começam a escolher o itinerário.', ic: (x, y, c, lt) => flagIcon(x + 4, y, 0.9, lt * 4) },
+  ];
+  const OPEN_T0 = 0.8, OPEN_STEP = 2.6;
+  function sOpening(lt) {
+    title('Abertura · 18h às 18h30', 112, fadeIn(lt, 0), 40);
+    const xs = OPEN_STEPS.map((_, i) => 168 + i * 236);
+    const prog = clamp((lt - OPEN_T0) / (OPEN_STEP * (OPEN_STEPS.length - 1)));
+    alpha(fadeIn(lt, 0.2), () => {
+      line(xs[0], 300, xs[xs.length - 1], 300, C.line, 6);
+      line(xs[0], 300, lerp(xs[0], xs[xs.length - 1], eio(prog)), 300, C.amber, 6);
+    });
+    let active = -1;
+    OPEN_STEPS.forEach((s, i) => {
+      const t0 = OPEN_T0 + i * OPEN_STEP;
+      const on = lt >= t0;
+      if (on) active = i;
+      const q = pop(lt, 0.2 + i * 0.12);
+      withT(xs[i], 300, q, 0, () => {
+        const cur = on && (i === OPEN_STEPS.length - 1 || lt < t0 + OPEN_STEP);
+        fillRR(-104, -110, 208, 220, 20, cur ? C.amber : on ? C.night2 : 'rgba(22,33,79,0.6)');
+        strokeRR(-104, -110, 208, 220, 20, on ? C.amber : C.line, 3);
+        const ic = cur ? C.ink : on ? C.amber : C.dim;
+        s.ic(0, -40, ic, lt);
+        if (s.h) T(s.h, 0, 26, { f: DISP, s: 26, c: ic });
+        const words = s.t.split(' ');
+        if (s.t.length > 12) {
+          const mid = Math.ceil(words.length / 2);
+          T(words.slice(0, mid).join(' '), 0, 34, { s: 27, w: 800, c: cur ? C.ink : C.cream });
+          T(words.slice(mid).join(' '), 0, 64, { s: 27, w: 800, c: cur ? C.ink : C.cream });
+        } else T(s.t, 0, s.h ? 64 : 44, { s: 28, w: 800, c: cur ? C.ink : C.cream });
+        if (on && !cur) check(84, -90, 0.8);
+      });
+    });
+    if (active >= 0) {
+      const a = fadeIn(lt, OPEN_T0 + active * OPEN_STEP, 0.4);
+      alpha(a, () => {
+        fillRR(140, 500, 1000, 90, 45, C.panel);
+        T(OPEN_STEPS[active].d, W / 2, 545 + (1 - a) * 10, { s: 38, w: 600 });
+      });
+    }
+  }
+  const openingClock = (lt) => 1080 + 30 * clamp((lt - OPEN_T0) / (OPEN_STEP * (OPEN_STEPS.length - 1)));
+
+  // 3. equipes em trios
+  const TRIO_POS = [];
+  for (let j = 0; j < 2; j++) for (let i = 0; i < 4; i++) TRIO_POS.push([250 + i * 260, 300 + j * 160]);
   const SORT = (() => {
     const r = rng(11), dots = [];
-    for (let i = 0; i < 30; i++) dots.push({ x: 180 + r() * 920, y: 260 + r() * 360, ph: r() * 6, sp: 0.6 + r() * 0.8, team: 0, slot: 0, delay: r() * 0.6 });
+    for (let i = 0; i < 24; i++) dots.push({ x: 160 + r() * 960, y: 230 + r() * 300, ph: r() * 6, sp: 0.6 + r() * 0.8, delay: r() * 0.6 });
     const order = dots.map((_, i) => i).sort(() => r() - 0.5);
-    order.forEach((di, k) => { dots[di].team = Math.floor(k / 5); dots[di].slot = k % 5; });
+    order.forEach((di, k) => { dots[di].team = Math.floor(k / 3); dots[di].slot = k % 3; });
     return dots;
   })();
-  const TEAM_POS = [[340, 360], [640, 360], [940, 360], [340, 540], [640, 540], [940, 540]];
-  function stepChips(active, a) {
-    const items = ['1  Regras', '2  Sorteio', '3  Passaporte', 'Celulares'];
-    const w = 190, gap = 14, x0 = W / 2 - (items.length * w + (items.length - 1) * gap) / 2;
-    items.forEach((s, i) => {
-      const on = i === active, done = i < active;
-      alpha(a, () => {
-        fillRR(x0 + i * (w + gap), 92, w, 40, 20, on ? C.amber : done ? C.line : 'rgba(43,58,122,0.45)');
-        T(s, x0 + i * (w + gap) + w / 2, 113, { s: 22, c: on ? C.ink : done ? C.cream : C.dim, ls: 1 });
-        if (done) check(x0 + i * (w + gap) + w - 22, 112, 0.6);
-      });
+  function sTrios(lt) {
+    title('Equipes em trios', 112, fadeIn(lt, 0), 44);
+    sub('sorteadas na abertura', 160, fadeIn(lt, 0.3));
+    SORT.forEach((d) => {
+      const shuffle = p(lt, 0.4, 1.4) * (1 - p(lt, 2.4, 3.0));
+      const jx = Math.sin(lt * 6 * d.sp + d.ph) * 40 * shuffle, jy = Math.cos(lt * 5 * d.sp + d.ph) * 30 * shuffle;
+      const go = eio(p(lt, 2.2 + d.delay, 3.3 + d.delay));
+      const [cx, cy] = TRIO_POS[d.team];
+      const an = -Math.PI / 2 + (d.slot * Math.PI * 2) / 3;
+      circle(lerp(d.x + jx, cx + Math.cos(an) * 13, go), lerp(d.y + jy, cy + Math.sin(an) * 13, go), 9, go > 0.6 ? TEAMS[d.team] : C.dim);
     });
-  }
-  function sOpening(lt) {
-    const phase = lt < 2.6 ? 0 : lt < 6 ? 1 : lt < 8 ? 2 : 3;
-    stepChips(phase, eo(p(lt, 0, 0.4)));
-    // fase A: regras
-    if (lt < 2.9) {
-      const a = Math.min(eo(p(lt, 0.1, 0.5)), 1 - p(lt, 2.5, 2.9));
-      alpha(a, () => {
-        title('Explicação das regras', 190, 1, 40);
-        clipboard(W / 2, 440, 1.25);
-        const lines = ['Início 18h · limite 21h', 'Cada desafio: até 10 min', 'A equipe anda sempre completa'];
-        lines.forEach((s, i) => {
-          const q = eo(p(lt, 0.6 + i * 0.45, 1.0 + i * 0.45));
-          T(s, W / 2 - 178, 360 + i * 80, { s: 32, c: C.ink, al: 'left', a: q });
-          if (q > 0) check(W / 2 - 200, 360 + i * 80, back(q) * 0.9);
-        });
-      });
-    }
-    // fase B e C: sorteio + passaporte
-    if (lt >= 2.6 && lt < 8.4) {
-      const a = Math.min(eo(p(lt, 2.6, 3.0)), 1 - p(lt, 8.0, 8.4));
-      alpha(a, () => {
-        title(lt < 6 ? 'Sorteio das equipes' : 'Passaporte de Certificação', 190, 1, 40);
-        if (lt >= 6) T('cada área concluída ganha um registro', W / 2, 232, { s: 26, c: C.dim, a: eo(p(lt, 6.1, 6.5)) });
-        SORT.forEach((d) => {
-          const shuffle = p(lt, 2.6, 3.8);
-          const jx = Math.sin(lt * 6 * d.sp + d.ph) * 40 * shuffle, jy = Math.cos(lt * 5 * d.sp + d.ph) * 30 * shuffle;
-          const go = eio(p(lt, 3.8 + d.delay, 4.9 + d.delay));
-          const [cx, cy] = TEAM_POS[d.team];
-          const an = -Math.PI / 2 + (d.slot * Math.PI * 2) / 5;
-          const tx = cx + Math.cos(an) * 17, ty = cy + Math.sin(an) * 17;
-          const x = lerp(d.x + jx, tx, go), y = lerp(d.y + jy, ty, go);
-          circle(x, y, 8, go > 0.6 ? TEAMS[d.team] : C.dim);
-        });
-        TEAM_POS.forEach(([x, y], i) => {
-          const q = eo(p(lt, 5.0 + i * 0.08, 5.4 + i * 0.08));
-          ring(x, y, 30, TEAMS[i] + '66', 2 * q);
-          T('EQUIPE ' + 'ABCDEF'[i], x, y + 58, { s: 22, c: TEAMS[i], a: q, ls: 2 });
-          const f = eo(p(lt, 6.2 + i * 0.15, 6.8 + i * 0.15));
-          if (f > 0) passport(lerp(W / 2, x + 70, f), lerp(130, y, f), lerp(0.5, 0.8, f), '#1f6f78', (1 - f) * 2);
-        });
-      });
-    }
-    // fase D: celulares
-    if (lt >= 8) {
-      const a = eo(p(lt, 8.1, 8.5)) * (1 - p(lt, 9.75, 10));
-      alpha(a, () => {
-        title('Celulares no envelope', 190, 1, 40);
-        T('recolhidos no início e devolvidos só no final', W / 2, 232, { s: 26, c: C.dim });
-        const flap = eio(p(lt, 9.1, 9.5));
-        envelope(W / 2, 470, 1.1, flap);
-        if (flap < 0.6) {
-          for (let i = 0; i < 4; i++) {
-            const f = eio(p(lt, 8.3 + i * 0.15, 8.9 + i * 0.15));
-            phone(W / 2 - 75 + i * 50, lerp(240, 470, f), 0.8, TEAMS[i], (1 - f) * (i % 2 ? 0.6 : -0.6));
-          }
-        }
-        if (flap >= 0.6) envelope(W / 2, 470, 1.1, flap);
-      });
-    }
+    TRIO_POS.forEach(([x, y], i) => {
+      const q = fadeIn(lt, 3.6 + i * 0.07);
+      ring(x, y, 28, TEAMS[i] + '66', 2 * q);
+      T('EQUIPE ' + (i + 1), x, y + 50, { s: 22, c: TEAMS[i], a: q, ls: 2 });
+    });
+    alpha(fadeIn(lt, 4.6), () => {
+      fillRR(240, 580, 800, 64, 32, C.amber);
+      T('O trio anda sempre junto. Ninguém circula sozinho.', W / 2, 612, { s: 32, w: 800, c: C.ink });
+    });
   }
 
-  // ---------- cena 3: tipos de desafio ----------
-  const CARD_X = [245, 515, 785, 1055];
-  const DONE_ORDER = [1, 3, 0, 2];
-  function sKinds(lt) {
-    title('Dois tipos de desafio', 112, eo(p(lt, 0, 0.4)), 42);
-    T('ACADÊMICOS · na ordem que a equipe quiser', 64, 188, { s: 26, al: 'left', a: eo(p(lt, 0.3, 0.7)), ls: 1 });
-    AREAS.forEach((ar, i) => {
-      const x = CARD_X[i];
-      const k = DONE_ORDER.indexOf(i);
-      const tDone = 3.0 + k * 1.15;
-      const done = p(lt, tDone, tDone + 0.3);
-      const unlock = eo(p(lt, tDone + 0.45, tDone + 0.85));
-      // conector
-      const ca = eo(p(lt, 1.6, 2.2));
-      alpha(ca, () => {
-        ctx.beginPath(); ctx.moveTo(x, 352); ctx.lineTo(x, 458);
-        ctx.strokeStyle = unlock > 0 ? ar.c : C.line; ctx.lineWidth = 4; ctx.setLineDash([8, 8]); ctx.lineDashOffset = -lt * 30; ctx.stroke(); ctx.setLineDash([]);
-        if (done > 0 && unlock < 1) circle(x, lerp(352, 458, p(lt, tDone + 0.1, tDone + 0.6)), 8, ar.c);
-      });
-      // card acadêmico
-      const q = back(p(lt, 0.3 + i * 0.15, 0.8 + i * 0.15));
-      withT(x, 290, q, 0, () => {
-        fillRR(-115, -60, 230, 120, 18, done > 0 ? ar.c : C.night2);
-        strokeRR(-115, -60, 230, 120, 18, ar.c, 3);
-        book(0, -14, 0.8, done > 0 ? C.ink : ar.c);
-        T(ar.n, 0, 32, { s: 30, w: 800, c: done > 0 ? C.ink : C.cream });
-        if (done > 0) {
-          check(92, -38, back(done) * 1.1);
-          withT(-92, -38, back(done), 0, () => { circle(0, 0, 17, C.ink); T(String(k + 1) + 'º', 1, 1, { s: 20, w: 800, c: ar.c }); });
-        }
-      });
-      // card esportivo
-      const q2 = back(p(lt, 1.3 + i * 0.15, 1.8 + i * 0.15));
-      withT(x, 520, q2, 0, () => {
-        fillRR(-115, -60, 230, 120, 18, unlock > 0.5 ? ar.c + '33' : 'rgba(22,33,79,0.9)');
-        strokeRR(-115, -60, 230, 120, 18, unlock > 0.5 ? ar.c : C.line, 3, unlock > 0.5 ? null : [6, 6]);
-        ball(-70, -2, 22, unlock > 0.5 ? ar.c : C.dim, lt * unlock);
-        T('Esporte', -38, -16, { s: 22, c: unlock > 0.5 ? C.cream : C.dim, al: 'left' });
-        T(ar.n, -38, 14, { s: 26, w: 800, c: unlock > 0.5 ? ar.c : C.dim, al: 'left' });
-        withT(92, -38, 0.6, 0, () => lock(0, 0, 1, unlock, unlock > 0.5 ? C.ok : C.dim));
-      });
+  // 4. celulares
+  function sPhones(lt) {
+    title('Celulares no envelope', 112, fadeIn(lt, 0), 44);
+    sub('é proibido usar celular ou qualquer eletrônico durante as provas', 162, fadeIn(lt, 0.3));
+    const flap = eio(p(lt, 2.4, 2.8));
+    envelope(W / 2, 400, 1.2, flap);
+    if (flap < 0.6) for (let i = 0; i < 4; i++) {
+      const f = eio(p(lt, 0.8 + i * 0.2, 1.5 + i * 0.2));
+      phone(W / 2 - 75 + i * 50, lerp(220, 400, f), 0.8, TEAMS[i], (1 - f) * (i % 2 ? 0.6 : -0.6));
+    }
+    if (flap >= 0.6) envelope(W / 2, 400, 1.2, flap);
+    alpha(fadeIn(lt, 3.2), () => {
+      fillRR(270, 570, 740, 64, 32, C.panel);
+      T('Recolhidos no início · devolvidos no encerramento', W / 2, 602, { s: 32, w: 600 });
     });
-    alpha(eo(p(lt, 1.3, 1.7)), () => {
-      ctx.font = `600 26px ${BODY}`; ctx.letterSpacing = '1px';
-      const lw = ctx.measureText('ESPORTIVOS · só depois do acadêmico da mesma área').width; ctx.letterSpacing = '0px';
-      fillRR(52, 412, lw + 26, 40, 20, C.night2);
-      T('ESPORTIVOS · só depois do acadêmico da mesma área', 64, 432, { s: 26, al: 'left', ls: 1, c: C.amber });
-    });
-    T('Cada acadêmico concluído vira um registro no Passaporte', W / 2, 640, { s: 28, c: C.dim, a: eo(p(lt, 7.3, 7.8)) });
   }
 
-  // ---------- cena 4: jornada de uma equipe ----------
-  const NODES = [
-    { x: 110, y: 610, type: 'start' },
-    { x: 190, y: 300, type: 'ac', a: 1 },
-    { x: 330, y: 460, type: 'sp', a: 1 },
-    { x: 430, y: 220, type: 'ac', a: 3 },
-    { x: 690, y: 220, type: 'ac', a: 0 },
-    { x: 560, y: 390, type: 'sp', a: 3 },
-    { x: 790, y: 430, type: 'ac', a: 2 },
-    { x: 640, y: 580, type: 'sp', a: 0 },
-    { x: 420, y: 610, type: 'sp', a: 2 },
-  ];
-  const TIMES = [432, 365, 520, 333, 550, 408, 475, 277];
-  const HOP0 = 0.9, HOP = 1.35, MOVE = 0.55;
-  function journeyState(lt) {
-    // índice do desafio atual e fração de cada etapa
-    const k = Math.floor((lt - HOP0) / HOP);
-    return { k, f: (lt - HOP0) / HOP - k };
-  }
-  function acDoneAt(area) { const idx = NODES.findIndex((n) => n.type === 'ac' && n.a === area); return HOP0 + (idx - 1) * HOP + HOP; }
-  function spDoneAt(area) { const idx = NODES.findIndex((n) => n.type === 'sp' && n.a === area); return HOP0 + (idx - 1) * HOP + HOP; }
-  function sJourney(lt) {
-    T('A NOITE DE UMA EQUIPE', 60, 112, { f: DISP, s: 34, al: 'left', a: eo(p(lt, 0, 0.4)) });
-    T('exemplo: Equipe A, sempre completa, escolhendo seu caminho', 62, 150, { s: 24, al: 'left', c: C.dim, a: eo(p(lt, 0.2, 0.6)) });
-    const ma = eo(p(lt, 0.2, 0.8));
-    // trilha percorrida
-    const { k, f } = journeyState(lt);
-    alpha(ma, () => {
-      ctx.beginPath(); ctx.moveTo(NODES[0].x, NODES[0].y);
-      for (let i = 1; i < NODES.length; i++) ctx.lineTo(NODES[i].x, NODES[i].y);
-      ctx.strokeStyle = 'rgba(154,166,214,0.18)'; ctx.lineWidth = 3; ctx.setLineDash([4, 10]); ctx.stroke(); ctx.setLineDash([]);
-      if (lt > HOP0) {
-        ctx.beginPath(); ctx.moveTo(NODES[0].x, NODES[0].y);
-        const last = Math.min(k, NODES.length - 2);
-        for (let i = 1; i <= last; i++) ctx.lineTo(NODES[i].x, NODES[i].y);
-        if (k < NODES.length - 1) {
-          const m = eio(clamp(f / (MOVE / HOP)));
-          const A = NODES[k], B = NODES[k + 1];
-          ctx.lineTo(lerp(A.x, B.x, m), lerp(A.y, B.y, m));
-        }
-        ctx.strokeStyle = C.amber; ctx.lineWidth = 4; ctx.stroke();
-      }
-      // nós
-      NODES.forEach((n, i) => {
-        const q = back(p(lt, 0.2 + i * 0.05, 0.6 + i * 0.05));
-        withT(n.x, n.y, q, 0, () => {
-          if (n.type === 'start') {
-            fillRR(-56, -20, 112, 40, 20, C.line); T('LARGADA', 0, 1, { s: 20, ls: 2 });
-            return;
-          }
-          const ar = AREAS[n.a];
-          const doneT = HOP0 + (i - 1) * HOP + HOP - 0.05;
-          const done = lt >= doneT;
-          if (n.type === 'ac') {
-            circle(0, 0, 38, done ? ar.c : C.night);
-            ring(0, 0, 38, ar.c, 3);
-            book(0, -6, 0.55, done ? C.ink : ar.c);
-            T(ar.k, 0, 18, { f: DISP, s: 13, c: done ? C.ink : ar.c });
-          } else {
-            const open = lt >= acDoneAt(n.a);
-            fillRR(-34, -34, 68, 68, 14, done ? ar.c : C.night);
-            strokeRR(-34, -34, 68, 68, 14, open ? ar.c : C.line, 3, open ? null : [5, 5]);
-            ball(0, -5, 15, done ? C.ink : open ? ar.c : C.dim);
-            T(ar.k, 0, 22, { f: DISP, s: 11, c: done ? C.ink : open ? ar.c : C.dim });
-            if (!open) withT(26, -30, 0.6, 0, () => lock(0, 0, 1, 0, C.dim));
-          }
-          // anel de 10 min enquanto a equipe está no desafio
-          if (k === i - 1 && f > MOVE / HOP) {
-            const tf = p(f, MOVE / HOP, 0.97);
-            ctx.beginPath(); ctx.arc(0, 0, 50, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * tf * (TIMES[i - 1] / 600));
-            ctx.strokeStyle = C.amber; ctx.lineWidth = 6; ctx.stroke();
-            ring(0, 0, 50, 'rgba(255,182,39,0.2)', 6);
-          }
-          if (done) check(32, -32, back(p(lt, doneT, doneT + 0.3)) * 0.8);
+  // 5. passaporte digital
+  const APP_W = 330, APP_H = 540;
+  function appScreen(x, y, lt, events, opts = {}) {
+    // celular com o app do passaporte; events: [{t, room, dur}] validações
+    const w = APP_W, h = APP_H;
+    withT(x, y, 1, 0, () => {
+      fillRR(-w / 2 - 12, -h / 2 - 12, w + 24, h + 24, 42, '#05081a');
+      fillRR(-w / 2, -h / 2, w, h, 32, C.paper);
+      fillRR(-w / 2, -h / 2, w, 92, [32, 32, 0, 0], '#1f6f78');
+      T('PASSAPORTE DIGITAL', 0, -h / 2 + 34, { f: DISP, s: 16, c: C.paper });
+      T(opts.team || 'Equipe 7 · trio', 0, -h / 2 + 64, { s: 20, c: C.amber, ls: 2 });
+      const done = new Set(events.filter((e) => lt >= e.t).map((e) => e.room));
+      AREAS.forEach((ar, ai) => {
+        const ry = -h / 2 + 130 + ai * 82;
+        T(ar.n.toUpperCase(), -w / 2 + 22, ry, { s: 18, c: '#5b6488', al: 'left', ls: 2, w: 700 });
+        roomsOf(ai).forEach((rm, k) => {
+          const bx = -w / 2 + 22 + k * 76, by = ry + 14;
+          const ev = events.find((e) => e.room === rm.id);
+          const on = done.has(rm.id);
+          fillRR(bx, by, 68, 30, 8, on ? ar.c : '#e6dcc2');
+          T(rm.id, bx + 34, by + 16, { s: 18, w: 800, c: on ? C.ink : '#a99d7f' });
+          if (on) check(bx + 64, by + 2, pop(lt, ev.t, 0.35) * 0.55);
         });
+        const all = roomsOf(ai).every((rm) => done.has(rm.id));
+        const sp = events.find((e) => e.room === 'SP-' + ar.k);
+        const spDone = sp && lt >= sp.t;
+        const sx = w / 2 - 40, sy = ry + 29;
+        circle(sx, sy, 18, spDone ? ar.c : all ? '#ffffff' : '#e6dcc2');
+        if (all) ball(sx, sy, 11, spDone ? C.ink : ar.c);
+        else withT(sx, sy + 2, 0.5, 0, () => lock(0, 0, 1, 0, '#a99d7f'));
       });
-      // equipe
-      let tx = NODES[0].x, ty = NODES[0].y;
-      if (lt > HOP0) {
-        if (k >= NODES.length - 1) { tx = NODES[NODES.length - 1].x; ty = NODES[NODES.length - 1].y; }
-        else { const m = eio(clamp(f / (MOVE / HOP))); tx = lerp(NODES[k].x, NODES[k + 1].x, m); ty = lerp(NODES[k].y, NODES[k + 1].y, m); }
-      }
-      withT(tx, ty - 58, 1, 0, () => {
-        fillRR(-38, -38, 76, 76, 38, 'rgba(11,18,48,0.85)');
-        team(0, 0, TEAMS[0], 0.95);
-      });
-    });
-    // passaporte
-    const pa = eo(p(lt, 0.4, 1.0));
-    withT(1050, 410 + (1 - pa) * 60, 1, 0, () => alpha(pa, () => {
-      fillRR(-180, -250, 360, 500, 18, C.paper);
-      fillRR(-180, -250, 360, 64, [18, 18, 0, 0], '#1f6f78');
-      T('PASSAPORTE DE CERTIFICAÇÃO', 0, -226, { f: DISP, s: 15, c: C.paper });
-      T('EQUIPE A', 0, -202, { s: 20, c: C.amber, ls: 3 });
-      T('ÁREAS ACADÊMICAS', -150, -160, { s: 18, c: '#5b6488', al: 'left', ls: 2 });
-      AREAS.forEach((ar, i) => {
-        const sx = -78 + (i % 2) * 156, sy = -95 + Math.floor(i / 2) * 118;
-        ring(sx, sy, 46, '#c9bd9c', 2.5, [6, 6]);
-        T(ar.n, sx, sy + 62, { s: 18, c: '#5b6488' });
-        const ts = acDoneAt(AREAS.indexOf(ar));
-        const sp = p(lt, ts - 0.05, ts + 0.2);
-        if (sp > 0) {
-          withT(sx, sy, lerp(1.8, 1, eo(sp)), -0.25, () => alpha(clamp(sp * 3), () => {
-            ring(0, 0, 42, ar.c, 5); ring(0, 0, 33, ar.c, 2);
-            T(ar.k, 0, -4, { f: DISP, s: 20, c: ar.c });
-            T('OK ✓', 0, 18, { s: 16, w: 800, c: ar.c });
-          }));
-        }
-      });
-      T('ESPORTIVOS', -150, 120, { s: 18, c: '#5b6488', al: 'left', ls: 2 });
-      AREAS.forEach((ar, i) => {
-        const bx = -150 + i * 78;
-        fillRR(bx, 140, 66, 34, 8, lt >= spDoneAt(i) ? ar.c : '#e6dcc2');
-        T(ar.k, bx + 33, 158, { s: 18, w: 800, c: lt >= spDoneAt(i) ? C.ink : '#a99d7f' });
-      });
-      // tempo acumulado
       let total = 0;
-      for (let i = 0; i < TIMES.length; i++) {
-        const s0 = HOP0 + i * HOP + MOVE, s1 = HOP0 + (i + 1) * HOP - 0.05;
-        total += TIMES[i] * p(lt, s0, s1);
+      events.forEach((e) => { if (e.dur) total += e.dur * p(lt, e.t - (e.span || 0.6), e.t); });
+      line(-w / 2 + 22, h / 2 - 70, w / 2 - 22, h / 2 - 70, '#d7c9a6', 2);
+      T('TEMPO TOTAL', -w / 2 + 22, h / 2 - 38, { s: 18, c: '#5b6488', al: 'left', ls: 2, w: 700 });
+      T(hmmss(total), w / 2 - 22, h / 2 - 38, { f: DISP, s: 24, c: C.ink, al: 'right' });
+      // aviso de validação
+      const toast = opts.toast || 1.2;
+      const last = events.filter((e) => lt >= e.t).pop();
+      if (last && lt < last.t + toast) {
+        const a = Math.min(fadeIn(lt, last.t, 0.2), 1 - p(lt, last.t + toast - 0.25, last.t + toast));
+        alpha(a, () => {
+          fillRR(-w / 2 + 14, -h / 2 + 100, w - 28, 44, 12, C.ink);
+          const rm = ROOMS.find((r) => r.id === last.room);
+          const label = rm ? rm.short : 'Esporte ' + AREAS.find((ar) => 'SP-' + ar.k === last.room).k;
+          T('✓ ' + label + ' validado', 0, -h / 2 + 123, { s: 22, w: 800, c: C.ok });
+        });
       }
-      T('TEMPO TOTAL', -150, 212, { s: 18, c: '#5b6488', al: 'left', ls: 2 });
-      T(mmss(total), 150, 212, { f: DISP, s: 26, c: C.ink, al: 'right' });
-    }));
-    const end = eo(p(lt, 11.7, 12));
-    if (end > 0) {
-      fillRR(270, 660 - end * 6, 300, 40, 20, C.ok);
-      T('8 de 8 desafios concluídos', 420, 681 - end * 6, { s: 22, w: 800, c: C.ink });
-    }
+    });
+  }
+  const PASS_EVENTS = [
+    { t: 6.4, room: 'MAT', dur: 452 },
+    { t: 7.6, room: 'QUI', dur: 397 },
+    { t: 8.8, room: 'BIO', dur: 512 },
+    { t: 10.0, room: 'FIS', dur: 344 },
+  ];
+  function sPassport(lt) {
+    T('PASSAPORTE DIGITAL', 80, 130, { f: DISP, s: 42, al: 'left', a: fadeIn(lt, 0) });
+    T('nada de papel: agora o passaporte é um aplicativo', 82, 178, { s: 28, al: 'left', c: C.dim, a: fadeIn(lt, 0.3) });
+    bulletText([
+      { t: 'A Organização controla o passaporte no app.' },
+      { t: 'Concluiu uma sala? A validação é registrada.' },
+      { t: 'Validou as salas da área: libera o esporte.' },
+      { t: 'O app soma o tempo total da equipe.' },
+    ], 80, 260, lt, 1.0, 66, 1.4, 31);
+    alpha(fadeIn(lt, 7.0), () => {
+      fillRR(80, 540, 580, 110, 20, C.panel);
+      T('ORGANIZAÇÃO', 110, 575, { s: 22, c: C.amber, al: 'left', ls: 3, w: 700 });
+      T('Carol · Renato · Bibi', 110, 617, { f: DISP, s: 28, al: 'left' });
+    });
+    const a = fadeIn(lt, 0.5, 0.6);
+    alpha(a, () => appScreen(960, 400 + (1 - a) * 60, lt, PASS_EVENTS));
+    PASS_EVENTS.forEach((e) => { // toque de validação
+      const q = p(lt, e.t - 0.35, e.t + 0.2);
+      if (q > 0 && q < 1) {
+        const rm = ROOMS.find((r) => r.id === e.room);
+        const k = roomsOf(rm.a).indexOf(rm);
+        const bx = 960 - APP_W / 2 + 22 + k * 76 + 34, by = 400 - APP_H / 2 + 130 + rm.a * 82 + 29;
+        ring(bx, by, 10 + q * 26, `rgba(255,182,39,${1 - q})`, 4);
+      }
+    });
   }
 
-  // ---------- cena 5: tempo e vagas ----------
+  // 6. áreas e salas — visão geral
+  function sAreas(lt) {
+    title('4 áreas · 9 salas', 112, fadeIn(lt, 0), 44);
+    sub('algumas áreas têm mais de uma sala de desafio', 160, fadeIn(lt, 0.3));
+    AREAS.forEach((ar, ai) => {
+      const x = 205 + ai * 290;
+      withT(x, 222, pop(lt, 0.4 + ai * 0.2), 0, () => T(ar.n.toUpperCase(), 0, 0, { f: DISP, s: 26, c: ar.c }));
+      const rms = roomsOf(ai);
+      rms.forEach((rm, k) => {
+        withT(x, 284 + k * 70, pop(lt, 1.0 + ai * 0.35 + k * 0.18), 0, () => {
+          fillRR(-125, -28, 250, 56, 14, ar.c);
+          T(rm.n, 0, 2, { s: rm.n.length > 16 ? 24 : 28, w: 800, c: C.ink });
+        });
+      });
+      T(rms.length + (rms.length > 1 ? ' salas' : ' sala'), x, 284 + 3 * 70 - 8, { s: 26, c: C.dim, a: fadeIn(lt, 2.6 + ai * 0.15) });
+    });
+    alpha(fadeIn(lt, 3.8), () => {
+      fillRR(190, 570, 900, 64, 32, C.amber);
+      T('Ordem livre: cada equipe monta o próprio itinerário', W / 2, 602, { s: 32, w: 800, c: C.ink });
+    });
+  }
+
+  // 7-10. detalhe de cada área
+  function sArea(ai) {
+    return function (lt) {
+      const ar = AREAS[ai];
+      const rms = roomsOf(ai);
+      T('ÁREA', W / 2, 98, { s: 22, c: C.dim, ls: 6, a: fadeIn(lt, 0) });
+      title(ar.n, 140, fadeIn(lt, 0.1), 48, ar.c);
+      const n = rms.length;
+      const cw = n === 3 ? 350 : n === 2 ? 380 : 440, gap = 34;
+      const x0 = W / 2 - (n * cw + (n - 1) * gap) / 2;
+      rms.forEach((rm, k) => {
+        const cx = x0 + k * (cw + gap) + cw / 2;
+        withT(cx, 370, pop(lt, 0.5 + k * 0.45, 0.5), 0, () => {
+          fillRR(-cw / 2, -170, cw, 340, 22, C.panel);
+          fillRR(-cw / 2, -170, cw, 120, [22, 22, 0, 0], ar.c);
+          roomIcon(rm.ic, -cw / 2 + 62, -110, 1, C.ink);
+          if (rm.n.length > 12) {
+            const parts = rm.n.split(' ');
+            const mid = Math.ceil(parts.length / 2);
+            T(parts.slice(0, mid).join(' '), -cw / 2 + 112, -128, { s: 32, w: 800, c: C.ink, al: 'left' });
+            T(parts.slice(mid).join(' '), -cw / 2 + 112, -94, { s: 32, w: 800, c: C.ink, al: 'left' });
+          } else T(rm.n, -cw / 2 + 112, -110, { s: 38, w: 800, c: C.ink, al: 'left' });
+          T('LOCAL', -cw / 2 + 30, -14, { s: 20, c: C.dim, al: 'left', ls: 3 });
+          T(rm.loc, -cw / 2 + 30, 26, { s: rm.loc.length > 16 ? 34 : 40, w: 800, al: 'left', c: C.amber });
+          T('PROFESSOR', -cw / 2 + 30, 82, { s: 20, c: C.dim, al: 'left', ls: 3 });
+          T(rm.who, -cw / 2 + 30, 120, { s: 36, w: 800, al: 'left' });
+        });
+      });
+      alpha(fadeIn(lt, 1.0 + n * 0.45), () => {
+        const msg = n > 1 ? `Concluiu as ${n} salas? Libera o Esporte · ${ar.n}` : `Concluiu a sala? Libera o Esporte · ${ar.n}`;
+        const tw = textW(msg, 30, BODY, 800) + 110;
+        fillRR(W / 2 - tw / 2, 580, tw, 60, 30, C.night2);
+        strokeRR(W / 2 - tw / 2, 580, tw, 60, 30, ar.c, 2);
+        ball(W / 2 - tw / 2 + 40, 610, 15, ar.c, lt);
+        T(msg, W / 2 + 22, 611, { s: 30, w: 800 });
+      });
+    };
+  }
+
+  // 11. desafios esportivos
+  function sSports(lt) {
+    title('Desafios esportivos', 112, fadeIn(lt, 0), 44);
+    sub('um por área, com a equipe de Educação Física', 160, fadeIn(lt, 0.3));
+    alpha(fadeIn(lt, 0.6), () => {
+      fillRR(70, 210, 330, 330, 22, C.panel);
+      runner(235, 278, 1.3, '#2ec4b6');
+      T('ED. FÍSICA', 235, 350, { s: 22, c: '#2ec4b6', ls: 3, w: 700 });
+      ['Valência', 'Alex', 'Matheus Maciel'].forEach((nm, i) => T(nm, 235, 398 + i * 44, { s: 32, w: 800, a: fadeIn(lt, 1.0 + i * 0.2) }));
+    });
+    const unlockAt = [6.6, 7.6, 5.0, 3.4];
+    const roomDone = { MAT: 2.8, QUI: 3.8, BIO: 4.2, FIS: 4.6, HG: 6.9, FIL: 7.2, POR: 5.6, ESP: 5.9, ART: 6.2 };
+    AREAS.forEach((ar, ai) => {
+      const x = 640 + (ai % 2) * 390, y = 290 + Math.floor(ai / 2) * 170;
+      const ul = eo(p(lt, unlockAt[ai], unlockAt[ai] + 0.4));
+      withT(x, y, pop(lt, 0.8 + ai * 0.15), 0, () => {
+        fillRR(-180, -70, 360, 140, 20, ul > 0.5 ? ar.c + '33' : 'rgba(22,33,79,0.9)');
+        strokeRR(-180, -70, 360, 140, 20, ul > 0.5 ? ar.c : C.line, 3, ul > 0.5 ? null : [7, 7]);
+        ball(-130, -12, 24, ul > 0.5 ? ar.c : C.dim, lt * ul);
+        T('Esporte', -92, -34, { s: 22, al: 'left', c: C.dim });
+        T(ar.n, -92, -4, { s: 32, w: 800, al: 'left', c: ul > 0.5 ? ar.c : C.cream });
+        withT(150, -40, 0.7, 0, () => lock(0, 0, 1, ul, ul > 0.5 ? C.ok : C.dim));
+        roomsOf(ai).forEach((rm, k) => {
+          const d = lt >= roomDone[rm.id];
+          fillRR(-92 + k * 76, 26, 68, 28, 8, d ? ar.c : 'rgba(154,166,214,0.18)');
+          T(rm.id, -92 + k * 76 + 34, 41, { s: 18, w: 800, c: d ? C.ink : C.dim });
+        });
+      });
+    });
+    alpha(fadeIn(lt, 2.0), () => {
+      fillRR(70, 580, 1140, 64, 32, C.amber);
+      T('Só libera depois que a equipe conclui TODAS as salas da área', W / 2, 612, { s: 32, w: 800, c: C.ink });
+    });
+  }
+
+  // 12. tempo e vagas
   function countdownRing(x, y, r, frac, col, label, size = 64) {
     ring(x, y, r, 'rgba(154,166,214,0.18)', 14);
     ctx.beginPath(); ctx.arc(x, y, r, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * frac);
     ctx.strokeStyle = col; ctx.lineWidth = 14; ctx.lineCap = 'round'; ctx.stroke(); ctx.lineCap = 'butt';
     T(label, x, y + 4, { f: DISP, s: size, c: col });
   }
-  function sRules(lt) {
-    // parte 1
-    if (lt < 4.9) {
-      const a = Math.min(eo(p(lt, 0, 0.4)), 1 - p(lt, 4.5, 4.9));
-      alpha(a, () => {
-        title('Cada desafio: até 10 minutos', 112, 1, 40);
-        // sala
-        fillRR(80, 200, 520, 400, 22, 'rgba(22,33,79,0.9)');
-        strokeRR(80, 200, 520, 400, 22, C.line, 3);
-        fillRR(586, 420, 20, 110, 4, C.amber); // porta
-        T('SALA DO DESAFIO', 340, 236, { s: 24, ls: 3, c: C.dim });
-        T('máximo 2 equipes por vez', 340, 566, { s: 26, c: C.amber });
-        [0, 1].forEach((i) => {
-          strokeRR(120 + i * 230, 290, 210, 220, 16, C.line, 2, [8, 8]);
-          T('VAGA ' + (i + 1), 225 + i * 230, 320, { s: 20, c: C.dim, ls: 2 });
-        });
-        team(225, 420, TEAMS[0], 1.3);
-        // equipe B sai quando o tempo acaba
-        const exit = eio(p(lt, 3.7, 4.5));
-        const bx = lerp(455, 700, exit), by = lerp(420, 475, exit);
-        team(bx, by, lt > 3.5 ? C.coral : TEAMS[3], 1.3);
-        T('EQUIPE B', bx, by + 56, { s: 20, c: lt > 3.5 ? C.coral : TEAMS[3], ls: 2 });
-        // equipe C chega e espera
-        const arr = eo(p(lt, 0.6, 1.4));
-        const cx = lerp(1300, 700, arr);
-        if (exit < 0.3) {
-          team(cx, 330, TEAMS[2], 1.1);
-          T('aguarda vaga', cx, 384, { s: 20, c: TEAMS[2], a: arr });
-        }
-        // cronômetro
-        const cd = p(lt, 0.8, 3.5);
-        const left = 600 * (1 - cd);
-        const col = cd >= 1 ? C.coral : C.amber;
-        countdownRing(990, 390, 150, 1 - cd, col, mmss(left), 60);
-        T('EQUIPE B NO DESAFIO', 990, 590, { s: 22, ls: 3, c: C.dim, a: 1 - p(lt, 3.5, 3.6) });
-        if (cd >= 1) {
-          const fl = 0.6 + 0.4 * Math.sin(lt * 20);
-          T('TEMPO ESGOTADO', 990, 590, { f: DISP, s: 28, c: C.coral, a: fl });
-        }
+  function sTimer(lt) {
+    title('Cada sala: até 10 minutos', 112, fadeIn(lt, 0), 42);
+    alpha(fadeIn(lt, 0.3), () => {
+      fillRR(80, 180, 540, 430, 22, C.panel);
+      strokeRR(80, 180, 540, 430, 22, C.line, 3);
+      fillRR(606, 420, 20, 110, 4, C.amber);
+      T('SALA M21 · MATEMÁTICA', 350, 218, { s: 24, ls: 3, c: C.dim });
+      [0, 1].forEach((i) => {
+        strokeRR(120 + i * 240, 260, 220, 230, 16, C.line, 2, [8, 8]);
+        T('VAGA ' + (i + 1), 230 + i * 240, 290, { s: 20, c: C.dim, ls: 2 });
       });
-    }
-    // parte 2
-    if (lt >= 4.6) {
-      const a = eo(p(lt, 4.6, 5.0)) * (1 - p(lt, 8.75, 9));
-      alpha(a, () => {
-        title('Não concluiu? Duas opções', 112, 1, 40);
-        // opção 1
-        fillRR(70, 170, 550, 470, 22, 'rgba(22,33,79,0.9)');
-        T('OPÇÃO 1', 110, 214, { f: DISP, s: 28, c: C.amber, al: 'left' });
-        T('Sai do espaço e espera 10 minutos', 110, 258, { s: 28, al: 'left' });
-        T('antes de tentar de novo.', 110, 290, { s: 28, al: 'left' });
-        const w1 = p(lt, 5.4, 8.3);
-        countdownRing(345, 455, 105, 1 - w1, w1 >= 1 ? C.ok : C.amber, w1 >= 1 ? 'VOLTA!' : mmss(600 * (1 - w1)), w1 >= 1 ? 34 : 40);
-        team(165, 560, C.coral, 0.9);
-        // opção 2
-        fillRR(660, 170, 550, 470, 22, 'rgba(22,33,79,0.9)');
-        T('OPÇÃO 2', 700, 214, { f: DISP, s: 28, c: C.amber, al: 'left' });
-        T('Cede a vaga: outra equipe usa o espaço', 700, 258, { s: 28, al: 'left' });
-        T('e, quando o tempo dela acaba, volta.', 700, 290, { s: 28, al: 'left' });
-        strokeRR(830, 350, 210, 200, 16, C.line, 2, [8, 8]);
-        T('VAGA', 935, 378, { s: 20, c: C.dim, ls: 2 });
-        const cin = eio(p(lt, 5.3, 6.0)), cout = eio(p(lt, 7.4, 7.9));
-        const cX = cout > 0 ? lerp(935, 1160, cout) : lerp(1160, 935, cin);
-        team(cX, 460, TEAMS[2], 1.1);
-        const bin = eio(p(lt, 7.8, 8.5));
-        team(lerp(745, 935, bin), lerp(590, 460, bin), C.coral, bin > 0.9 ? 1.1 : 0.9);
-        const bar = p(lt, 6.0, 7.4);
-        fillRR(850, 520, 170, 10, 5, 'rgba(154,166,214,0.25)');
-        fillRR(850, 520, 170 * bar, 10, 5, TEAMS[2]);
-        T(bin > 0.9 ? 'vez da Equipe B' : 'Equipe C usando a vaga', 935, 612, { s: 22, c: bin > 0.9 ? C.coral : TEAMS[2] });
+      team(230, 390, TEAMS[0], 1.4);
+      T('EQUIPE 1', 230, 450, { s: 20, c: TEAMS[0], ls: 2 });
+      const exit = eio(p(lt, 6.0, 7.0));
+      const out = lt > 5.6;
+      const bx = lerp(470, 720, exit), by = lerp(390, 470, exit);
+      team(bx, by, out ? C.coral : TEAMS[3], 1.4);
+      T('EQUIPE 2', bx, by + 60, { s: 20, c: out ? C.coral : TEAMS[3], ls: 2 });
+      const arr = eo(p(lt, 1.6, 2.5));
+      const cx = lerp(1330, 720, arr);
+      if (exit < 0.3) { team(cx, 300, TEAMS[2], 1.2); T('EQUIPE 3 aguarda', cx, 352, { s: 20, c: TEAMS[2], a: arr }); }
+      alpha(fadeIn(lt, 1.0), () => {
+        fillRR(150, 520, 400, 56, 28, C.amber);
+        T('No máximo 2 equipes por sala', 350, 549, { s: 28, w: 800, c: C.ink });
       });
-    }
+    });
+    const cd = p(lt, 1.6, 5.6);
+    const col = cd >= 1 ? C.coral : C.amber;
+    alpha(fadeIn(lt, 0.6), () => countdownRing(990, 380, 150, 1 - cd, col, mmss(600 * (1 - cd)), 60));
+    T('EQUIPE 2 NO DESAFIO', 990, 580, { s: 24, ls: 3, c: C.dim, a: fadeIn(lt, 0.8) * (1 - p(lt, 5.6, 5.7)) });
+    if (cd >= 1) T('TEMPO ESGOTADO', 990, 580, { f: DISP, s: 30, c: C.coral, a: 0.6 + 0.4 * Math.sin(lt * 14) });
   }
 
-  // ---------- cena 6: conduta ----------
+  // 13. não concluiu: duas opções
+  function sOptions(lt) {
+    title('Não concluiu em 10 min? Duas opções', 112, fadeIn(lt, 0), 38);
+    alpha(fadeIn(lt, 0.4), () => {
+      fillRR(70, 170, 550, 480, 22, C.panel);
+      T('OPÇÃO 1', 110, 214, { f: DISP, s: 30, c: C.amber, al: 'left' });
+      T('Sai da sala e espera 10 minutos', 110, 262, { s: 31, al: 'left' });
+      T('antes de tentar de novo.', 110, 298, { s: 31, al: 'left' });
+      const w1 = p(lt, 2.2, 7.6);
+      countdownRing(345, 470, 105, 1 - w1, w1 >= 1 ? C.ok : C.amber, w1 >= 1 ? 'VOLTA!' : mmss(600 * (1 - w1)), w1 >= 1 ? 34 : 40);
+      team(160, 590, C.coral, 0.9);
+    });
+    alpha(fadeIn(lt, 1.2), () => {
+      fillRR(660, 170, 550, 480, 22, C.panel);
+      T('OPÇÃO 2', 700, 214, { f: DISP, s: 30, c: C.amber, al: 'left' });
+      T('Cede a vaga: espera outra equipe usar', 700, 262, { s: 31, al: 'left' });
+      T('a sala e, quando o tempo dela acabar, volta.', 700, 298, { s: 31, al: 'left' });
+      strokeRR(830, 360, 210, 200, 16, C.line, 2, [8, 8]);
+      T('VAGA', 935, 388, { s: 20, c: C.dim, ls: 2 });
+      const cin = eio(p(lt, 2.6, 3.4)), cout = eio(p(lt, 6.4, 7.0));
+      team(cout > 0 ? lerp(935, 1170, cout) : lerp(1170, 935, cin), 470, TEAMS[2], 1.1);
+      const bin = eio(p(lt, 6.9, 7.7));
+      team(lerp(745, 935, bin), lerp(600, 470, bin), C.coral, bin > 0.9 ? 1.1 : 0.9);
+      const bar = p(lt, 3.4, 6.4);
+      fillRR(850, 530, 170, 10, 5, 'rgba(154,166,214,0.25)');
+      fillRR(850, 530, 170 * bar, 10, 5, TEAMS[2]);
+      T(bin > 0.9 ? 'vez da Equipe 2' : 'Equipe 3 usando a vaga', 935, 618, { s: 24, c: bin > 0.9 ? C.coral : TEAMS[2] });
+    });
+  }
+
+  // 14. conduta
   function sConduct(lt) {
-    title('Regras de conduta', 112, eo(p(lt, 0, 0.4)), 42);
+    title('Regras de conduta', 112, fadeIn(lt, 0), 42);
     const cards = [
-      { x: 230, t1: 'Sem celular ou', t2: 'eletrônicos', draw: (lt) => { phone(0, 0, 1.3, C.cream); cross(0, 0, eo(p(lt, 0.8, 1.1)) * 0.9); } },
-      { x: 640, t1: 'Ninguém circula', t2: 'sozinho', draw: (lt) => { team(0, 0, TEAMS[0], 1.6); ring(0, 0, 62, C.amber, 3, [6, 6]); } },
-      { x: 1050, t1: 'Tudo dentro da escola,', t2: 'com respeito', draw: () => school(0, 0, 1.15) },
+      { x: 230, t1: 'Sem celular ou', t2: 'eletrônicos', draw: () => { phone(0, 0, 1.3, C.cream); cross(0, 0, eo(p(lt, 1.0, 1.3)) * 0.9); } },
+      { x: 640, t1: 'Trio sempre', t2: 'completo', draw: () => { team(0, 0, TEAMS[0], 1.7); ring(0, 0, 62, C.amber, 3, [6, 6]); } },
+      { x: 1050, t1: 'Só dentro da escola,', t2: 'com respeito', draw: () => school(0, 0, 1.15) },
     ];
     cards.forEach((c, i) => {
-      const q = back(p(lt, 0.2 + i * 0.2, 0.7 + i * 0.2));
-      withT(c.x, 330, q, 0, () => {
-        fillRR(-180, -130, 360, 260, 22, 'rgba(22,33,79,0.9)');
-        withT(0, -35, 1, 0, () => c.draw(lt));
-        T(c.t1, 0, 66, { s: 30, w: 800 });
-        T(c.t2, 0, 100, { s: 30, w: 800, c: C.amber });
+      withT(c.x, 320, pop(lt, 0.3 + i * 0.4, 0.5), 0, () => {
+        fillRR(-185, -130, 370, 260, 22, C.panel);
+        withT(0, -35, 1, 0, c.draw);
+        T(c.t1, 0, 66, { s: 32, w: 800 });
+        T(c.t2, 0, 102, { s: 32, w: 800, c: C.amber });
       });
     });
-    T('PENALIDADES · decididas pela Comissão de Organização', W / 2, 518, { s: 22, ls: 2, c: C.dim, a: eo(p(lt, 1.6, 2.0)) });
+    T('PENALIDADES · decididas pela Comissão de Organização', W / 2, 512, { s: 24, ls: 2, c: C.dim, a: fadeIn(lt, 3.0) });
     const pen = ['Advertência oral', 'Fora de um desafio', 'Suspensão + Opção 1', 'Aluno excluído', 'Equipe excluída'];
     pen.forEach((s, i) => {
-      const q = eo(p(lt, 1.9 + i * 0.25, 2.3 + i * 0.25));
+      const q = fadeIn(lt, 3.4 + i * 0.45, 0.4);
       const x = 58 + i * 236;
       alpha(q, () => {
-        fillRR(x, 548 + (1 - q) * 20, 220, 64, 14, `rgba(255,93,93,${0.15 + i * 0.18})`);
-        T(s, x + 110, 581 + (1 - q) * 20, { s: 24, w: 800 });
-        if (i < 4) T('›', x + 228, 581, { s: 30, c: C.coral });
+        fillRR(x, 548 + (1 - q) * 20, 220, 70, 14, `rgba(255,93,93,${0.15 + i * 0.18})`);
+        T(s, x + 110, 584 + (1 - q) * 20, { s: 26, w: 800 });
+        if (i < 4) T('›', x + 228, 584, { s: 30, c: C.coral });
       });
     });
   }
 
-  // ---------- cena 7: premiação ----------
+  // 15. a jornada de uma equipe (18h30 → 21h)
+  const NODES = [
+    { x: 450, y: 420, id: 'START' },
+    { x: 610, y: 540, id: 'MAT' },
+    { x: 770, y: 590, id: 'SP-MAT', a: 3 },
+    { x: 560, y: 250, id: 'HG' },
+    { x: 730, y: 270, id: 'FIL' },
+    { x: 650, y: 400, id: 'SP-HUM', a: 1 },
+    { x: 300, y: 235, id: 'ESP' },
+    { x: 140, y: 250, id: 'POR' },
+    { x: 190, y: 370, id: 'ART' },
+    { x: 330, y: 340, id: 'SP-LIN', a: 0 },
+    { x: 120, y: 490, id: 'QUI' },
+    { x: 230, y: 590, id: 'BIO' },
+    { x: 380, y: 570, id: 'FIS' },
+    { x: 290, y: 470, id: 'SP-NAT', a: 2 },
+  ];
+  const J0 = 1.4, JH = 1.0, JM = 0.45;
+  const JTIMES = [452, 333, 520, 365, 410, 488, 301, 540, 397, 512, 344, 377, 425];
+  const JOURNEY_EVENTS = NODES.slice(1).map((n, i) => ({ t: J0 + (i + 1) * JH - 0.05, room: n.id, dur: JTIMES[i], span: JH - JM - 0.05 }));
+  const J_END = J0 + 13 * JH;
+  function sJourney(lt) {
+    T('UMA NOITE DE EXEMPLO', 60, 112, { f: DISP, s: 34, al: 'left', a: fadeIn(lt, 0) });
+    T('a Equipe 7 escolhe seu caminho; a Organização valida no app', 62, 150, { s: 24, al: 'left', c: C.dim, a: fadeIn(lt, 0.2) });
+    const k = Math.floor((lt - J0) / JH), f = (lt - J0) / JH - k;
+    const doneT = (i) => J0 + i * JH - 0.05;
+    const areaDone = (a) => Math.max(...NODES.map((n, i) => { const rm = ROOMS.find((r) => r.id === n.id); return rm && rm.a === a ? doneT(i) : -1; }));
+    alpha(fadeIn(lt, 0.2, 0.6), () => {
+      [['LINGUAGENS', 220, 190, 0], ['HUMANAS', 645, 200, 1], ['NATUREZA', 110, 650, 2], ['MATEMÁTICA', 690, 655, 3]].forEach(([s, x, y, a]) => T(s, x, y, { s: 18, ls: 3, c: AREAS[a].c, w: 700 }));
+      ctx.beginPath(); ctx.moveTo(NODES[0].x, NODES[0].y);
+      for (let i = 1; i < NODES.length; i++) ctx.lineTo(NODES[i].x, NODES[i].y);
+      ctx.strokeStyle = 'rgba(154,166,214,0.15)'; ctx.lineWidth = 3; ctx.setLineDash([4, 10]); ctx.stroke(); ctx.setLineDash([]);
+      if (lt > J0) {
+        ctx.beginPath(); ctx.moveTo(NODES[0].x, NODES[0].y);
+        for (let i = 1; i <= Math.min(k, NODES.length - 1); i++) ctx.lineTo(NODES[i].x, NODES[i].y);
+        if (k < NODES.length - 1) { const m = eio(clamp(f / (JM / JH))); ctx.lineTo(lerp(NODES[k].x, NODES[k + 1].x, m), lerp(NODES[k].y, NODES[k + 1].y, m)); }
+        ctx.strokeStyle = C.amber; ctx.lineWidth = 4; ctx.stroke();
+      }
+      NODES.forEach((n, i) => {
+        withT(n.x, n.y, pop(lt, 0.2 + i * 0.04, 0.4), 0, () => {
+          if (n.id === 'START') { fillRR(-60, -20, 120, 40, 20, C.line); T('18h30', 0, 1, { f: DISP, s: 18 }); return; }
+          const done = lt >= doneT(i);
+          const rm = ROOMS.find((r) => r.id === n.id);
+          if (rm) {
+            const ar = AREAS[rm.a];
+            circle(0, 0, 32, done ? ar.c : C.night);
+            ring(0, 0, 32, ar.c, 3);
+            roomIcon(rm.ic, 0, 0, 0.5, done ? C.ink : ar.c);
+            T(rm.short, 0, 48, { s: 18, w: 700, c: ar.c });
+          } else {
+            const ar = AREAS[n.a];
+            const open = lt >= areaDone(n.a);
+            fillRR(-30, -30, 60, 60, 14, done ? ar.c : C.night);
+            strokeRR(-30, -30, 60, 60, 14, open ? ar.c : C.line, 3, open ? null : [5, 5]);
+            ball(0, 0, 15, done ? C.ink : open ? ar.c : C.dim);
+            T('Esporte', 0, 46, { s: 18, w: 700, c: open ? ar.c : C.dim });
+            if (!open) withT(24, -26, 0.55, 0, () => lock(0, 0, 1, 0, C.dim));
+          }
+          if (k === i - 1 && f > JM / JH) {
+            const tf = p(f, JM / JH, 0.95);
+            ctx.beginPath(); ctx.arc(0, 0, 42, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * tf * (JTIMES[i - 1] / 600));
+            ctx.strokeStyle = C.amber; ctx.lineWidth = 5; ctx.stroke();
+          }
+          if (done) check(26, -26, pop(lt, doneT(i), 0.3) * 0.7);
+        });
+      });
+      let tx = NODES[0].x, ty = NODES[0].y;
+      if (lt > J0) {
+        if (k >= NODES.length - 1) { tx = NODES[NODES.length - 1].x; ty = NODES[NODES.length - 1].y; }
+        else { const m = eio(clamp(f / (JM / JH))); tx = lerp(NODES[k].x, NODES[k + 1].x, m); ty = lerp(NODES[k].y, NODES[k + 1].y, m); }
+      }
+      withT(tx, ty - 50, 1, 0, () => { circle(0, 0, 34, 'rgba(11,18,48,0.85)'); team(0, 0, TEAMS[6], 0.95); });
+    });
+    const a = fadeIn(lt, 0.4, 0.6);
+    alpha(a, () => appScreen(1060, 410 + (1 - a) * 60, lt, JOURNEY_EVENTS, { toast: 0.9 }));
+    alpha(fadeIn(lt, J_END + 0.1, 0.3), () => {
+      fillRR(270, 398, 360, 44, 22, C.ok);
+      T('Tudo concluído: 9 salas + 4 esportes', 450, 421, { s: 24, w: 800, c: C.ink });
+    });
+  }
+  const journeyClock = (lt) => 1110 + 150 * p(lt, J0, J_END + 0.6);
+
+  // 16. 21h: pizza
+  function sPizza(lt) {
+    title('21h · fim dos desafios', 112, fadeIn(lt, 0), 44);
+    sub('hora de recarregar as energias', 160, fadeIn(lt, 0.3));
+    withT(W / 2, 380, pop(lt, 0.8, 0.7), 0, () => pizza(0, 0, 160, lt * 0.4, eo(p(lt, 2.0, 2.6))));
+    withT(W / 2, 610, pop(lt, 1.6, 0.5), 0, () => { fillRR(-300, -50, 600, 100, 26, 'rgba(11,18,48,0.92)'); T('PIZZA!', 0, 4, { f: DISP, s: 72, c: C.amber }); });
+  }
+
+  // 17. premiação
   function sAwards(lt) {
-    title('21:00 · fim dos desafios', 112, eo(p(lt, 0, 0.4)), 42);
-    const m = eo(p(lt, 0.3, 0.9));
+    title('Premiação · sala do PV', 112, fadeIn(lt, 0), 42);
+    const m = fadeIn(lt, 0.4, 0.6);
     alpha(m, () => {
-      medal(330, 360 + (1 - m) * -200, 1.25, Math.sin(lt * 3) * 0.08 * (1 - p(lt, 0, 4)));
-      T('MEDALHA DE CONCLUSÃO', 330, 520, { f: DISP, s: 24, c: C.amber });
-      T('para toda equipe que concluir', 330, 560, { s: 28 });
-      T('todos os desafios', 330, 592, { s: 28 });
+      medal(330, 340 + (1 - m) * -200, 1.25, Math.sin(lt * 3) * 0.08 * (1 - p(lt, 0, 5)));
+      T('MEDALHA DE CONCLUSÃO', 330, 505, { f: DISP, s: 24, c: C.amber });
+      T('para toda equipe que concluir', 330, 548, { s: 30 });
+      T('todos os desafios', 330, 582, { s: 30 });
     });
     const pod = [
-      { x: 780, h: 150, n: '2', c: TEAMS[3], tm: '01:58:47', d: 1.4 },
-      { x: 950, h: 220, n: '1', c: TEAMS[0], tm: '01:52:10', d: 1.7 },
-      { x: 1120, h: 110, n: '3', c: TEAMS[2], tm: '02:05:03', d: 1.1 },
+      { x: 780, h: 150, n: '2', c: TEAMS[3], tm: '1:58:47', d: 2.2 },
+      { x: 950, h: 220, n: '1', c: TEAMS[6], tm: '1:52:10', d: 2.6 },
+      { x: 1120, h: 110, n: '3', c: TEAMS[2], tm: '2:05:03', d: 1.8 },
     ];
     pod.forEach((b) => {
       const q = eo(p(lt, b.d, b.d + 0.5));
       const h = b.h * q;
-      fillRR(b.x - 80, 600 - h, 160, h, [10, 10, 0, 0], b.c);
+      fillRR(b.x - 80, 590 - h, 160, h, [10, 10, 0, 0], b.c);
       if (q > 0.6) {
-        T(b.n + 'º', b.x, 600 - h + 42, { f: DISP, s: 40, c: C.ink });
-        T(b.tm, b.x, 600 - h + 82, { s: 22, w: 800, c: C.ink });
-        team(b.x, 600 - h - 44, b.c, 0.85);
+        T(b.n + 'º', b.x, 590 - h + 42, { f: DISP, s: 40, c: C.ink });
+        T(b.tm, b.x, 590 - h + 82, { s: 22, w: 800, c: C.ink });
+        team(b.x, 590 - h - 40, b.c, 0.9);
       }
       if (b.n === '1' && q >= 1) {
-        const cr = back(p(lt, 2.3, 2.7));
-        withT(b.x, 600 - h - 100, cr, 0, () => {
+        withT(b.x, 590 - h - 92, pop(lt, 3.3, 0.4), 0, () => {
           ctx.beginPath(); ctx.moveTo(-24, 14); ctx.lineTo(-28, -12); ctx.lineTo(-12, 0); ctx.lineTo(0, -18); ctx.lineTo(12, 0); ctx.lineTo(28, -12); ctx.lineTo(24, 14); ctx.closePath();
           ctx.fillStyle = C.amber; ctx.fill();
         });
       }
     });
-    fillRR(660, 600, 580, 3, 1, C.line);
-    T('Campeã: menor tempo total acumulado', 950, 640, { s: 28, c: C.amber, a: eo(p(lt, 2.4, 2.9)) });
+    fillRR(660, 590, 580, 3, 1, C.line);
+    T('Pódio: os 3 menores tempos totais', 950, 628, { s: 30, w: 800, c: C.amber, a: fadeIn(lt, 3.4) });
+    T('campeã = concluiu tudo no menor tempo', 950, 664, { s: 24, c: C.dim, a: fadeIn(lt, 3.8) });
   }
 
-  // ---------- cena 8: pizza & picolé ----------
-  const POPS = (() => { const r = rng(99), a = []; const cols = ['#ff5d8f', '#ffb627', '#4ea8ff', '#2ec4b6', '#c77dff', '#ff8c42']; for (let i = 0; i < 16; i++) a.push({ x: 60 + r() * 1160, d: r() * 2.2, sp: 260 + r() * 220, rot: r() * 6, vr: (r() - 0.5) * 3, s: 0.55 + r() * 0.45, c: cols[i % cols.length] }); return a; })();
-  function sFinale(lt) {
-    T('E PRA FECHAR A NOITE...', W / 2, 112, { f: DISP, s: 34, a: eo(p(lt, 0, 0.4)) });
+  // 18. 22h: sobremesa
+  const POPS = (() => { const r = rng(99), a = []; const cols = ['#ff5d8f', '#ffb627', '#4ea8ff', '#2ec4b6', '#c77dff', '#ff8c42']; for (let i = 0; i < 18; i++) a.push({ x: 60 + r() * 1160, d: r() * 2.2, sp: 200 + r() * 180, rot: r() * 6, vr: (r() - 0.5) * 3, s: 0.55 + r() * 0.45, c: cols[i % cols.length] }); return a; })();
+  function sDessert(lt) {
     ctx.save(); ctx.beginPath(); ctx.rect(0, 72, W, H - 72); ctx.clip();
     POPS.forEach((o) => {
-      const tt = lt - 0.4 - o.d;
+      const tt = lt - 0.2 - o.d;
       if (tt <= 0) return;
-      const y = -100 + ((tt * o.sp) % 920);
-      popsicle(o.x, y, o.s, o.rot + tt * o.vr, o.c);
+      popsicle(o.x, -100 + ((tt * o.sp) % 920), o.s, o.rot + tt * o.vr, o.c);
     });
     ctx.restore();
-    const pz = back(p(lt, 0.4, 1.1));
-    withT(W / 2, 360, pz, 0, () => pizza(0, 0, 150, lt * 0.5, eo(p(lt, 1.6, 2.2))));
-    const big = back(p(lt, 1.2, 1.8));
-    withT(W / 2, 590, big, 0, () => {
-      fillRR(-420, -58, 840, 150, 28, 'rgba(11,18,48,0.92)');
-      T('PIZZA & PICOLÉ!', 0, 0, { f: DISP, s: 76, c: C.amber });
-    });
-    T('Nos vemos no ENEM GAMES!', W / 2, 655, { s: 32, w: 800, a: eo(p(lt, 2.6, 3.1)) });
+    withT(W / 2, 112, 1, 0, () => { fillRR(-280, -36, 560, 72, 24, 'rgba(11,18,48,0.92)'); T('22H · SOBREMESA', 0, 2, { f: DISP, s: 42, a: fadeIn(lt, 0) }); });
+    withT(W / 2, 370, pop(lt, 0.5, 0.6), Math.sin(lt * 2) * 0.08, () => popsicle(0, 0, 2.3, 0, '#ff5d8f'));
+    withT(W / 2, 600, pop(lt, 1.2, 0.5), 0, () => { fillRR(-300, -56, 600, 112, 28, 'rgba(11,18,48,0.92)'); T('PICOLÉ!', 0, 4, { f: DISP, s: 80, c: C.amber }); });
   }
 
-  const SCENES = [sIntro, sOpening, sKinds, sJourney, sRules, sConduct, sAwards, sFinale];
+  // 19. 22h30: encerramento
+  function sEnd(lt) {
+    withT(W / 2 - 250, 175, pop(lt, 0.2, 0.5), 0, () => flagIcon(0, 0, 1.4, lt * 4));
+    T('22h30', W / 2 + 40, 150, { f: DISP, s: 60, c: C.amber, a: fadeIn(lt, 0.2) });
+    T('ENCERRAMENTO', W / 2 + 40, 210, { f: DISP, s: 34, a: fadeIn(lt, 0.4) });
+    alpha(fadeIn(lt, 1.0), () => {
+      fillRR(340, 260, 600, 56, 28, C.panel);
+      T('celulares devolvidos · todo mundo pra casa', W / 2, 289, { s: 28 });
+    });
+    const rows = [
+      { h: 'ORGANIZAÇÃO', n: 'Carol · Renato · Bibi', c: C.amber, y: 360 },
+      { h: 'EDUCAÇÃO FÍSICA', n: 'Valência · Alex · Matheus Maciel', c: '#2ec4b6', y: 432 },
+      { h: 'PROFESSORES DAS SALAS', n: 'Rafinha · Brunão · Castañeda · Dani Sinzatto · Kleber · Pâmela', c: '#c77dff', y: 504 },
+      { h: '', n: 'Arthur · Eloiza · Paulo · André · Renan', c: '#c77dff', y: 562 },
+    ];
+    rows.forEach((g, i) => {
+      const a = fadeIn(lt, 1.6 + i * 0.4);
+      if (g.h) T(g.h, W / 2, g.y, { s: 18, c: g.c, ls: 4, w: 700, a });
+      T(g.n, W / 2, g.h ? g.y + 28 : g.y, { s: 28, w: 700, a });
+    });
+    withT(W / 2, 645, pop(lt, 3.6, 0.5), 0, () => T('NOS VEMOS NO ENEM GAMES!', 0, 0, { f: DISP, s: 44, c: C.amber }));
+  }
+
+  // ================= ROTEIRO =================
+  const GROUPS = ['Abertura', 'Equipes e celulares', 'Passaporte digital', 'Áreas e salas', 'Esportivos', 'Regras das salas', 'A noite', 'Pizza e premiação', 'Sobremesa e fim'];
+  const SCENES = [
+    { id: 'intro', d: 6, g: 0, f: sIntro, clock: 1080, st: 'BEM-VINDOS', cues: [[0.1, 'whoosh'], [1.0, 'hit']] },
+    { id: 'abertura', d: 14.5, g: 0, f: sOpening, clock: openingClock, st: 'ABERTURA', cues: [0, 1, 2, 3, 4].map((i) => [OPEN_T0 + i * OPEN_STEP, i === 4 ? 'horn' : 'step']) },
+    { id: 'trios', d: 9, g: 1, f: sTrios, clock: 1100, st: 'COMO FUNCIONA', cues: [[0.4, 'shuffle'], [3.6, 'chime'], [4.6, 'hit']] },
+    { id: 'celulares', d: 7, g: 1, f: sPhones, clock: 1105, st: 'COMO FUNCIONA', cues: [[2.6, 'seal']] },
+    { id: 'passaporte', d: 13, g: 2, f: sPassport, clock: 'REGRAS', st: 'COMO FUNCIONA', cues: [1.0, 2.4, 3.8, 5.2].map((t) => [t, 'tick']).concat(PASS_EVENTS.map((e) => [e.t, 'validate']), [[10.4, 'unlock']]) },
+    { id: 'areas', d: 9, g: 3, f: sAreas, clock: 'REGRAS', st: 'COMO FUNCIONA', cues: [[1.0, 'chime'], [3.8, 'hit']] },
+    { id: 'area-lin', d: 8, g: 3, f: sArea(0), clock: 'REGRAS', st: 'COMO FUNCIONA', cues: [[0.5, 'card'], [0.95, 'card'], [1.4, 'card']] },
+    { id: 'area-hum', d: 7, g: 3, f: sArea(1), clock: 'REGRAS', st: 'COMO FUNCIONA', cues: [[0.5, 'card'], [0.95, 'card']] },
+    { id: 'area-nat', d: 8, g: 3, f: sArea(2), clock: 'REGRAS', st: 'COMO FUNCIONA', cues: [[0.5, 'card'], [0.95, 'card'], [1.4, 'card']] },
+    { id: 'area-mat', d: 6, g: 3, f: sArea(3), clock: 'REGRAS', st: 'COMO FUNCIONA', cues: [[0.5, 'card']] },
+    { id: 'esportivos', d: 11, g: 4, f: sSports, clock: 'REGRAS', st: 'COMO FUNCIONA', cues: [[3.4, 'unlock'], [5.0, 'unlock'], [6.6, 'unlock'], [7.6, 'unlock']] },
+    { id: 'tempo', d: 9, g: 5, f: sTimer, clock: 'REGRAS', st: 'COMO FUNCIONA', cues: [[1.6, 'countdown', 4.0], [5.6, 'buzzer']] },
+    { id: 'opcoes', d: 9, g: 5, f: sOptions, clock: 'REGRAS', st: 'COMO FUNCIONA', cues: [[7.6, 'chime']] },
+    { id: 'conduta', d: 10, g: 5, f: sConduct, clock: 'REGRAS', st: 'COMO FUNCIONA', cues: [[1.0, 'buzzer-soft']].concat([0, 1, 2, 3, 4].map((i) => [3.4 + i * 0.45, 'down'])) },
+    { id: 'jornada', d: 16.5, g: 6, f: sJourney, clock: journeyClock, st: 'DESAFIOS EM ANDAMENTO', cues: [[0.2, 'horn']].concat(JOURNEY_EVENTS.map((e) => [e.t, 'validate']), [[J_END + 0.1, 'fanfare']]) },
+    { id: 'pizza', d: 7, g: 7, f: sPizza, clock: 1260, st: 'FIM DOS DESAFIOS', cues: [[0.8, 'pop'], [1.6, 'fanfare']] },
+    { id: 'premiacao', d: 9, g: 7, f: sAwards, clock: 'SALA DO PV', st: 'PREMIAÇÃO', cues: [[0.5, 'fanfare'], [1.8, 'hit'], [2.2, 'hit'], [2.6, 'hit'], [3.3, 'sparkle']] },
+    { id: 'sobremesa', d: 6, g: 8, f: sDessert, clock: 1320, st: 'SOBREMESA', cues: [[0.5, 'pop'], [1.2, 'fanfare']] },
+    { id: 'fim', d: 9, g: 8, f: sEnd, clock: 1350, st: 'ENCERRAMENTO', cues: [[0.2, 'hit'], [3.6, 'finale']] },
+  ];
+  let acc = 0;
+  SCENES.forEach((s) => { s.a = acc; acc += s.d; s.b = acc; });
+  const DUR = acc;
+  const CHAPTERS = GROUPS.map((n, gi) => { const ss = SCENES.filter((s) => s.g === gi); return { n, a: ss[0].a, b: ss[ss.length - 1].b }; });
+  const CUES = [];
+  SCENES.forEach((s, i) => { if (i > 0) CUES.push({ t: s.a - 0.3, k: 'whoosh' }); s.cues.forEach(([t, k, d]) => CUES.push({ t: s.a + t, k, d })); });
+
+  function sceneIndex(t) { for (let i = SCENES.length - 1; i >= 0; i--) if (t >= SCENES[i].a) return i; return 0; }
+
+  function hud(t, sc, lt) {
+    T('ENEM GAMES', 40, 40, { f: DISP, s: 20, c: C.amber, al: 'left' });
+    T('CURSO G9 · 2026', 212, 41, { s: 18, c: C.dim, al: 'left', ls: 2 });
+    T(`${sc.g + 1}/${GROUPS.length} · ${GROUPS[sc.g].toUpperCase()}`, W / 2, 41, { s: 19, c: C.dim, ls: 3 });
+    const ck = typeof sc.clock === 'function' ? sc.clock(lt) : sc.clock;
+    const isTime = typeof ck === 'number';
+    const label = isTime ? hhmm(ck) : ck;
+    const pw = isTime ? 120 : Math.max(120, textW(label, 18, DISP, 400) + 36);
+    const live = isTime && ck >= 1110 && ck < 1260;
+    const late = isTime && ck >= 1260;
+    fillRR(1240 - pw, 20, pw, 42, 21, late ? C.coral : live ? C.amber : C.line);
+    T(label, 1240 - pw / 2, 42, { f: DISP, s: isTime ? 22 : 18, c: live || late ? C.ink : C.cream });
+    T(sc.st, 1226 - pw, 42, { s: 16, c: C.dim, al: 'right', ls: 2 });
+    CHAPTERS.forEach((c) => {
+      const x0 = 40 + (c.a / DUR) * (W - 80) + 2, w = ((c.b - c.a) / DUR) * (W - 80) - 4;
+      fillRR(x0, H - 14, w, 4, 2, 'rgba(154,166,214,0.25)');
+      const f = p(t, c.a, c.b);
+      if (f > 0) fillRR(x0, H - 14, w * f, 4, 2, C.amber);
+    });
+  }
 
   function render(context, t) {
     ctx = context;
     t = clamp(t, 0, DUR);
     background(t);
-    const i = chapterIndex(t);
-    const c = CHAPTERS[i];
-    const lt = t - c.a;
-    const fade = i === CHAPTERS.length - 1 ? 1 : 1 - p(t, c.b - 0.25, c.b);
-    alpha(Math.min(i === 0 ? 1 : p(t, c.a, c.a + 0.2), fade), () => SCENES[i](lt));
-    // flash de largada às 18h
-    if (t >= 15 && t < 16.4) {
-      const q = 1 - p(t, 15.6, 16.4);
-      const s = back(p(t, 15, 15.4));
-      alpha(q, () => withT(W / 2, H / 2, s, -0.06, () => {
-        fillRR(-300, -70, 600, 140, 20, C.amber);
-        T('18:00 · LARGADA!', 0, 4, { f: DISP, s: 48, c: C.ink });
-      }));
-    }
-    hud(t);
+    const i = sceneIndex(t);
+    const sc = SCENES[i];
+    const lt = t - sc.a;
+    const fade = i === SCENES.length - 1 ? 1 : 1 - p(t, sc.b - 0.3, sc.b);
+    alpha(Math.min(i === 0 ? 1 : p(t, sc.a, sc.a + 0.25), fade), () => sc.f(lt));
+    hud(t, sc, lt);
   }
 
-  window.EnemGames = { render, W, H, DUR, CHAPTERS };
+  window.EnemGames = { render, W, H, DUR, CHAPTERS, SCENES: SCENES.map(({ id, a, b }) => ({ id, a, b })), CUES };
 })();

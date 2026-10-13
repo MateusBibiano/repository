@@ -10,7 +10,10 @@ BUILD.mkdir(exist_ok=True)
 
 wav = BUILD / "trilha.wav"
 mp3 = BUILD / "trilha.mp3"
-subprocess.run(["python3", str(SRC / "soundtrack.py"), str(wav)], check=True)
+cues = BUILD / "cues.json"
+js = "global.window={};require(process.argv[1]);const G=window.EnemGames;console.log(JSON.stringify({dur:G.DUR,cues:G.CUES}))"
+cues.write_text(subprocess.run(["node", "-e", js, str(SRC / "scenes.js")], check=True, capture_output=True, text=True).stdout)
+subprocess.run(["python3", str(SRC / "soundtrack.py"), str(cues), str(wav)], check=True)
 subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-i", str(wav), "-b:a", "96k", str(mp3)], check=True)
 
 faces = [

@@ -26,7 +26,7 @@ button:focus-visible, input:focus-visible { outline: 3px solid var(--amber); out
 #play { background: var(--amber); color: var(--ink); border-color: var(--amber); min-width: 108px; }
 .time { font-family: var(--display); font-size: 18px; font-variant-numeric: tabular-nums; color: var(--dim); }
 .scrub { flex: 1 1 260px; min-width: 0; accent-color: var(--amber); }
-.chapters { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+.chapters { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
 .chapters button { border-radius: 12px; text-align: left; display: grid; gap: 2px; padding: 10px 14px; }
 .chapters small { font-family: var(--display); font-size: 12px; color: var(--dim); font-weight: 400; }
 .chapters button[aria-current="true"] { background: var(--amber); color: var(--ink); border-color: var(--amber); }
@@ -50,7 +50,7 @@ h2 { font-family: var(--display); font-weight: 400; font-size: 24px; margin: 0; 
 <div class="wrap">
   <header>
     <h1>ENEM GAMES 2026</h1>
-    <p>Como vai funcionar a noite, em 1 minuto</p>
+    <p>Como vai funcionar a noite: abertura, salas, regras, pizza e picolé</p>
   </header>
 
   <div class="stage" id="stage">
@@ -60,8 +60,8 @@ h2 { font-family: var(--display); font-weight: 400; font-size: 24px; margin: 0; 
 
   <div class="controls">
     <button id="play" type="button">▶ Play</button>
-    <span class="time" id="time">0:00 / 1:00</span>
-    <input class="scrub" id="scrub" type="range" min="0" max="60" step="0.01" value="0" aria-label="Posição no vídeo">
+    <span class="time" id="time">0:00</span>
+    <input class="scrub" id="scrub" type="range" min="0" max="170" step="0.01" value="0" aria-label="Posição no vídeo">
     <button id="sound" type="button" aria-pressed="true">Som: ligado</button>
     <button id="fs" type="button">Tela cheia</button>
   </div>
@@ -94,6 +94,7 @@ h2 { font-family: var(--display); font-weight: 400; font-size: 24px; margin: 0; 
   const chapEl = document.getElementById('chapters');
   let t = 0, playing = false, last = 0, soundOn = true, scale = 1;
 
+  scrub.max = G.DUR;
   function resize() {
     const r = cv.getBoundingClientRect();
     scale = Math.min(2, Math.max(1, (r.width * (window.devicePixelRatio || 1)) / G.W));
@@ -113,7 +114,7 @@ h2 { font-family: var(--display); font-weight: 400; font-size: 24px; margin: 0; 
   });
   function ui() {
     scrub.value = t;
-    timeEl.textContent = fmt(t) + ' / 1:00';
+    timeEl.textContent = fmt(t) + ' / ' + fmt(G.DUR);
     playBtn.textContent = playing ? '❚❚ Pausar' : (t >= G.DUR ? '↺ De novo' : '▶ Play');
     bigPlay.hidden = playing || (t > 0 && t < G.DUR);
     let ci = 0; G.CHAPTERS.forEach((c, i) => { if (t >= c.a) ci = i; });
@@ -164,12 +165,16 @@ h2 { font-family: var(--display); font-weight: 400; font-size: 24px; margin: 0; 
   });
 
   // ----- quiz -----
+  const sceneAt = (id) => G.SCENES.find((s) => s.id === id).a;
   const QUIZ = [
-    { q: 'Sua equipe não terminou o desafio em 10 minutos. E agora?', o: ['Continua até terminar', 'Sai e espera 10 min, ou cede a vaga e volta depois', 'Perde o desafio para sempre'], r: 1, ch: 4, why: 'Art. 12: Opção 1 (esperar 10 min) ou Opção 2 (esperar a outra equipe usar a vaga).' },
-    { q: 'Quando a equipe pode fazer o desafio esportivo de Matemática?', o: ['A qualquer momento', 'Só depois do desafio acadêmico de Matemática', 'Só no final da noite'], r: 1, ch: 2, why: 'Art. 5: o esportivo exige o acadêmico da mesma área.' },
-    { q: 'Quantas equipes podem estar ao mesmo tempo num mesmo desafio?', o: ['1', '2', 'Quantas couberem'], r: 1, ch: 4, why: 'Art. 11: no máximo 2 equipes por espaço.' },
-    { q: 'Quem vence o ENEM GAMES?', o: ['Quem fizer mais desafios', 'Quem concluir tudo no menor tempo total', 'Quem chegar primeiro às 18h'], r: 1, ch: 6, why: 'Art. 17: campeã é quem conclui todos os desafios no menor tempo acumulado.' },
-    { q: 'Um colega quer ir sozinho buscar água no meio do desafio. Pode?', o: ['Pode, é rapidinho', 'Não: a equipe circula sempre completa'], r: 1, ch: 5, why: 'Art. 10, § 1º: ninguém atua de forma isolada.' },
+    { q: 'Como são formadas as equipes?', o: ['Os alunos escolhem os grupos', 'Por sorteio, em trios', 'Por sorteio, em grupos de 5'], r: 1, go: 'trios', why: 'As equipes são trios sorteados na abertura.' },
+    { q: 'Quem registra que a equipe concluiu uma sala?', o: ['A própria equipe, num passaporte de papel', 'A Organização, pelo aplicativo do passaporte', 'Ninguém, vale a palavra da equipe'], r: 1, go: 'passaporte', why: 'O passaporte agora é digital e quem controla a validação é a Organização.' },
+    { q: 'Quantas salas tem a área de Natureza?', o: ['1', '2', '3'], r: 2, go: 'area-nat', why: 'Química (Lab. de Química), Biologia (F82) e Física (Sala de Arte).' },
+    { q: 'Quando a equipe pode fazer o Esporte de Linguagens?', o: ['A qualquer momento', 'Depois de concluir Português, Espanhol e Arte', 'Depois de concluir só uma sala de Linguagens'], r: 1, go: 'esportivos', why: 'O esportivo só libera quando todas as salas da área estão concluídas.' },
+    { q: 'O tempo acabou e a equipe não concluiu a sala. E agora?', o: ['Continua até terminar', 'Sai e espera 10 min, ou cede a vaga e volta depois', 'Perde a sala para sempre'], r: 1, go: 'opcoes', why: 'Opção 1: esperar 10 minutos. Opção 2: esperar a outra equipe usar a vaga.' },
+    { q: 'Quantas equipes podem estar ao mesmo tempo numa sala?', o: ['1', '2', 'Quantas couberem'], r: 1, go: 'tempo', why: 'No máximo 2 equipes por sala.' },
+    { q: 'Onde é a premiação?', o: ['No pátio', 'Na sala do PV', 'Na Sala dos Professores'], r: 1, go: 'premiacao', why: 'A premiação acontece na sala do PV.' },
+    { q: 'Quem vence o ENEM GAMES?', o: ['Quem fizer mais salas', 'Quem concluir tudo no menor tempo total', 'Quem chegar primeiro às 18h'], r: 1, go: 'premiacao', why: 'Campeã é a equipe que conclui todos os desafios no menor tempo acumulado.' },
   ];
   const quizEl = document.getElementById('quiz');
   const scoreEl = document.getElementById('score');
@@ -192,7 +197,7 @@ h2 { font-family: var(--display); font-weight: 400; font-size: 24px; margin: 0; 
         answered.set(qi, ok); score();
         fb.textContent = (ok ? 'Isso! ' : 'Quase. ') + item.why;
         const go = document.createElement('button'); go.type = 'button'; go.textContent = '▶ ver no vídeo';
-        go.addEventListener('click', () => { seek(G.CHAPTERS[item.ch].a + 0.01, true); document.getElementById('stage').scrollIntoView({ behavior: 'smooth', block: 'center' }); });
+        go.addEventListener('click', () => { seek(sceneAt(item.go) + 0.01, true); document.getElementById('stage').scrollIntoView({ behavior: 'smooth', block: 'center' }); });
         fb.appendChild(go);
       });
       opts.appendChild(b);

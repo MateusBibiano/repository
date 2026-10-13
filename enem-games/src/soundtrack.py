@@ -1,11 +1,14 @@
-"""Gera a trilha (música + efeitos) sincronizada com scenes.js. Saída: WAV mono 44.1 kHz."""
+"""Gera a trilha (música + efeitos) a partir das cues de scenes.js.
+Uso: soundtrack.py cues.json saida.wav"""
+import json
 import sys
 import wave
 
 import numpy as np
 
 SR = 44100
-DUR = 60.0
+CFG = json.load(open(sys.argv[1]))
+DUR = float(CFG['dur'])
 N = int(SR * DUR)
 out = np.zeros(N)
 rng = np.random.default_rng(3)
@@ -77,85 +80,96 @@ def note(m):
     return 440 * 2 ** ((m - 69) / 12)
 
 
-# ----- música: 120 bpm, C – G – Am – F -----
+# ----- música: 120 bpm; progressões alternam a cada 16 compassos -----
 BEAT = 0.5
-CHORDS = [[48, 52, 55], [43, 47, 50], [45, 48, 52], [41, 45, 48]]
+PROGS = [
+    [[48, 52, 55], [43, 47, 50], [45, 48, 52], [41, 45, 48]],  # C G Am F
+    [[45, 48, 52], [41, 45, 48], [48, 52, 55], [43, 47, 50]],  # Am F C G
+]
 nbeats = int(DUR / BEAT)
 for b in range(nbeats):
     t = b * BEAT
     bar = b // 4
-    ch = CHORDS[bar % 4]
+    ch = PROGS[(bar // 16) % 2][bar % 4]
     intro = t < 4.5
-    ending = t >= 59
-    if ending:
+    if t >= DUR - 2:
         continue
     if not intro:
-        add(kick(), t, 0.55)
+        add(kick(), t, 0.45)
         if b % 2 == 1:
-            add(clap(), t, 0.16)
+            add(clap(), t, 0.12)
     for h in (0, 0.25):
-        add(hat(), t + h, 0.10 if not intro else 0.05)
-    # baixo em colcheias
-    for h in (0, 0.25):
-        add(tone(note(ch[0] - 12 + 12), 0.22, "tri", 0.003, 0.12), t + h, 0.22 if not intro else 0.12)
-    # arpejo
-    for j in range(4):
-        m = ch[(b * 4 + j) % 3] + 24
-        add(tone(note(m), 0.14, "square", 0.002, 0.05), t + j * 0.125, 0.05)
+        add(hat(), t + h, 0.08 if not intro else 0.04)
+        add(tone(note(ch[0]), 0.22, "tri", 0.003, 0.12), t + h, 0.2 if not intro else 0.1)
+    if (bar // 8) % 2 == 0 or t > DUR - 30:
+        for j in range(4):
+            m = ch[(b * 4 + j) % 3] + 24
+            add(tone(note(m), 0.14, "square", 0.002, 0.05), t + j * 0.125, 0.04)
+    else:
+        if b % 4 == 0:
+            for m in ch:
+                add(tone(note(m + 12), 1.9, "tri", 0.05, 0.9), t, 0.05)
 
-# ----- efeitos -----
-for tt in (5, 15, 24, 36, 45, 50, 55):
-    add(whoosh(), tt - 0.3, 0.35)
-# checks da explicação das regras
-for i in range(3):
-    add(tone(note(84), 0.12, "sine", 0.002, 0.05), 5 + 0.6 + i * 0.45 + 0.4, 0.25)
-# sorteio
-add(whoosh(1.0), 5 + 2.7, 0.3)
-for i in range(6):
-    add(tone(note(72 + i * 2), 0.1, "tri", 0.002, 0.06), 5 + 5.0 + i * 0.08, 0.2)
-# envelope selado
-add(kick(), 5 + 9.45, 0.5)
-add(tone(note(60), 0.25, "square", 0.002, 0.08), 5 + 9.45, 0.15)
-# largada às 18h
-for i, m in enumerate((67, 72, 76, 79)):
-    add(tone(note(m), 0.35, "square", 0.004, 0.2), 15 + i * 0.07, 0.14)
-# desbloqueios
-for k in range(4):
-    td = 15 + 3.0 + k * 1.15
-    add(tone(note(79), 0.12, "sine", 0.002, 0.06), td, 0.25)
-    add(tone(note(86), 0.2, "sine", 0.002, 0.1), td + 0.5, 0.2)
-# carimbos da jornada
-for i in range(8):
-    td = 24 + 0.9 + 1.35 * (i + 1) - 0.05
-    add(kick(), td, 0.45)
-    add(noise(0.08, 0.02), td, 0.25)
-    add(tone(note(76 + (i % 4) * 2), 0.15, "tri", 0.002, 0.08), td + 0.03, 0.18)
-# cronômetro acelerado
-t = 36.8
-while t < 39.5:
-    add(hat(), t, 0.35)
-    add(tone(2000, 0.02, "sine", 0.001, 0.01), t, 0.12)
-    t += 0.12
-add(tone(note(43), 0.7, "square", 0.004, 0.4), 39.5, 0.3)
-add(tone(note(44), 0.7, "square", 0.004, 0.4), 39.5, 0.2)
-# opção 1 volta / opção 2 troca
-add(tone(note(84), 0.2, "sine", 0.002, 0.1), 36 + 8.3, 0.2)
-# penalidades
-for i in range(5):
-    add(tone(note(60 - i * 2), 0.12, "tri", 0.002, 0.08), 45 + 2.0 + i * 0.25, 0.2)
-# premiação
-for i, m in enumerate((72, 76, 79, 84)):
-    add(tone(note(m), 0.5, "square", 0.004, 0.3), 50.3 + i * 0.12, 0.12)
-for tt in (51.1, 51.4, 51.7):
-    add(kick(), tt, 0.4)
-for i in range(6):
-    add(tone(note(96 + (i % 3) * 3), 0.1, "sine", 0.001, 0.05), 52.3 + i * 0.05, 0.12)
-# final: pizza & picolé
-add(tone(note(60), 0.3, "sine", 0.002, 0.1) * 1, 55.45, 0.3)
-for i, m in enumerate((72, 76, 79, 84, 88)):
-    add(tone(note(m), 0.6, "square", 0.004, 0.35), 56.2 + i * 0.06, 0.1)
-for m in (48, 60, 64, 67, 72):
-    add(tone(note(m), 2.0, "tri", 0.01, 0.8), 59.0, 0.12)
+# ----- efeitos (cues) -----
+def fx(k, t, d=None):
+    if k == "whoosh":
+        add(whoosh(), t, 0.3)
+    elif k in ("hit", "seal"):
+        add(kick(), t, 0.5)
+        add(noise(0.08, 0.02), t, 0.2)
+    elif k == "step":
+        add(tone(note(79), 0.18, "sine", 0.002, 0.08), t, 0.25)
+        add(tone(note(84), 0.25, "sine", 0.002, 0.12), t + 0.08, 0.2)
+    elif k == "horn":
+        for i, m in enumerate((67, 72, 76, 79)):
+            add(tone(note(m), 0.35, "square", 0.004, 0.2), t + i * 0.07, 0.13)
+    elif k == "shuffle":
+        add(whoosh(1.6), t, 0.3)
+    elif k == "chime":
+        for i in range(5):
+            add(tone(note(72 + i * 3), 0.12, "tri", 0.002, 0.07), t + i * 0.07, 0.18)
+    elif k == "tick":
+        add(tone(note(84), 0.1, "sine", 0.002, 0.04), t, 0.2)
+    elif k == "validate":
+        add(kick(), t, 0.3)
+        add(tone(note(79), 0.12, "sine", 0.002, 0.06), t, 0.22)
+        add(tone(note(88), 0.18, "sine", 0.002, 0.09), t + 0.07, 0.18)
+    elif k == "unlock":
+        add(tone(note(76), 0.12, "tri", 0.002, 0.06), t, 0.22)
+        add(tone(note(83), 0.25, "tri", 0.002, 0.12), t + 0.09, 0.22)
+    elif k == "card":
+        add(noise(0.05, 0.015), t, 0.25)
+        add(tone(note(67), 0.12, "tri", 0.002, 0.06), t, 0.2)
+    elif k == "countdown":
+        x = t
+        while x < t + d:
+            add(hat(), x, 0.3)
+            add(tone(2000, 0.02, "sine", 0.001, 0.01), x, 0.1)
+            x += 0.12
+    elif k == "buzzer":
+        add(tone(note(43), 0.7, "square", 0.004, 0.4), t, 0.3)
+        add(tone(note(44), 0.7, "square", 0.004, 0.4), t, 0.2)
+    elif k == "buzzer-soft":
+        add(tone(note(48), 0.3, "square", 0.004, 0.15), t, 0.15)
+    elif k == "down":
+        add(tone(note(64), 0.12, "tri", 0.002, 0.08), t, 0.18)
+    elif k == "fanfare":
+        for i, m in enumerate((72, 76, 79, 84)):
+            add(tone(note(m), 0.5, "square", 0.004, 0.3), t + i * 0.12, 0.11)
+    elif k == "pop":
+        add(tone(note(60), 0.3, "sine", 0.002, 0.1), t, 0.3)
+    elif k == "sparkle":
+        for i in range(6):
+            add(tone(note(96 + (i % 3) * 3), 0.1, "sine", 0.001, 0.05), t + i * 0.05, 0.12)
+    elif k == "finale":
+        for i, m in enumerate((72, 76, 79, 84, 88)):
+            add(tone(note(m), 0.6, "square", 0.004, 0.35), t + i * 0.06, 0.1)
+        for m in (48, 60, 64, 67, 72):
+            add(tone(note(m), 3.0, "tri", 0.01, 1.2), t + 0.4, 0.12)
+
+
+for c in CFG["cues"]:
+    fx(c["k"], max(0.0, c["t"]), c.get("d"))
 
 # fade final e normalização
 fade = np.ones(N)
@@ -167,9 +181,9 @@ out /= np.max(np.abs(out)) + 1e-9
 out *= 0.85
 pcm = (out * 32767).astype(np.int16)
 
-with wave.open(sys.argv[1], "wb") as w:
+with wave.open(sys.argv[2], "wb") as w:
     w.setnchannels(1)
     w.setsampwidth(2)
     w.setframerate(SR)
     w.writeframes(pcm.tobytes())
-print("ok", sys.argv[1])
+print("ok", sys.argv[2])
