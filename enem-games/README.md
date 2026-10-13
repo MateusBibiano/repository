@@ -13,7 +13,7 @@
 | 1:27 | Esportivos | Ed. Física (Valência, Alex, Matheus Maciel); liberam ao concluir todas as salas da área |
 | 1:38 | Regras das salas | 10 min, 2 equipes por sala, Opção 1 / Opção 2, conduta e penalidades |
 | 2:06 | A noite | exemplo de itinerário de 18h30 a 21h, validado no app |
-| 2:23 | Pizza e premiação | 21h pizza; premiação na sala do PV |
+| 2:23 | Premiação e pizza | premiação na sala do PV; depois, pizza |
 | 2:39 | Sobremesa e fim | 22h picolé; 22h30 encerramento e créditos |
 
 ## Como editar

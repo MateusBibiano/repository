@@ -786,17 +786,18 @@
   }
   const journeyClock = (lt) => 1110 + 150 * p(lt, J0, J_END + 0.6);
 
-  // 16. 21h: pizza
+  // 17. pizza (depois da premiação)
   function sPizza(lt) {
-    title('21h · fim dos desafios', 112, fadeIn(lt, 0), 44);
+    title('Depois da premiação...', 112, fadeIn(lt, 0), 44);
     sub('hora de recarregar as energias', 160, fadeIn(lt, 0.3));
     withT(W / 2, 380, pop(lt, 0.8, 0.7), 0, () => pizza(0, 0, 160, lt * 0.4, eo(p(lt, 2.0, 2.6))));
     withT(W / 2, 610, pop(lt, 1.6, 0.5), 0, () => { fillRR(-300, -50, 600, 100, 26, 'rgba(11,18,48,0.92)'); T('PIZZA!', 0, 4, { f: DISP, s: 72, c: C.amber }); });
   }
 
-  // 17. premiação
+  // 16. premiação (logo depois dos desafios)
   function sAwards(lt) {
-    title('Premiação · sala do PV', 112, fadeIn(lt, 0), 42);
+    title('Fim dos desafios: premiação!', 112, fadeIn(lt, 0), 42);
+    sub('na sala do PV', 160, fadeIn(lt, 0.3), C.amber, 30);
     const m = fadeIn(lt, 0.4, 0.6);
     alpha(m, () => {
       medal(330, 340 + (1 - m) * -200, 1.25, Math.sin(lt * 3) * 0.08 * (1 - p(lt, 0, 5)));
@@ -869,7 +870,7 @@
   }
 
   // ================= ROTEIRO =================
-  const GROUPS = ['Abertura', 'Equipes e celulares', 'Passaporte digital', 'Áreas e salas', 'Esportivos', 'Regras das salas', 'A noite', 'Pizza e premiação', 'Sobremesa e fim'];
+  const GROUPS = ['Abertura', 'Equipes e celulares', 'Passaporte digital', 'Áreas e salas', 'Esportivos', 'Regras das salas', 'A noite', 'Premiação e pizza', 'Sobremesa e fim'];
   const SCENES = [
     { id: 'intro', d: 6, g: 0, f: sIntro, clock: 1080, st: 'BEM-VINDOS', cues: [[0.1, 'whoosh'], [1.0, 'hit']] },
     { id: 'abertura', d: 14.5, g: 0, f: sOpening, clock: openingClock, st: 'ABERTURA', cues: [0, 1, 2, 3, 4].map((i) => [OPEN_T0 + i * OPEN_STEP, i === 4 ? 'horn' : 'step']) },
@@ -886,8 +887,8 @@
     { id: 'opcoes', d: 9, g: 5, f: sOptions, clock: 'REGRAS', st: 'COMO FUNCIONA', cues: [[7.6, 'chime']] },
     { id: 'conduta', d: 10, g: 5, f: sConduct, clock: 'REGRAS', st: 'COMO FUNCIONA', cues: [[1.0, 'buzzer-soft']].concat([0, 1, 2, 3, 4].map((i) => [3.4 + i * 0.45, 'down'])) },
     { id: 'jornada', d: 16.5, g: 6, f: sJourney, clock: journeyClock, st: 'DESAFIOS EM ANDAMENTO', cues: [[0.2, 'horn']].concat(JOURNEY_EVENTS.map((e) => [e.t, 'validate']), [[J_END + 0.1, 'fanfare']]) },
-    { id: 'pizza', d: 7, g: 7, f: sPizza, clock: 1260, st: 'FIM DOS DESAFIOS', cues: [[0.8, 'pop'], [1.6, 'fanfare']] },
-    { id: 'premiacao', d: 9, g: 7, f: sAwards, clock: 'SALA DO PV', st: 'PREMIAÇÃO', cues: [[0.5, 'fanfare'], [1.8, 'hit'], [2.2, 'hit'], [2.6, 'hit'], [3.3, 'sparkle']] },
+    { id: 'premiacao', d: 9, g: 7, f: sAwards, clock: 'SALA DO PV', st: 'FIM DOS DESAFIOS', cues: [[0.5, 'fanfare'], [1.8, 'hit'], [2.2, 'hit'], [2.6, 'hit'], [3.3, 'sparkle']] },
+    { id: 'pizza', d: 7, g: 7, f: sPizza, clock: 'PIZZA', st: 'DEPOIS DA PREMIAÇÃO', cues: [[0.8, 'pop'], [1.6, 'fanfare']] },
     { id: 'sobremesa', d: 6, g: 8, f: sDessert, clock: 1320, st: 'SOBREMESA', cues: [[0.5, 'pop'], [1.2, 'fanfare']] },
     { id: 'fim', d: 9, g: 8, f: sEnd, clock: 1350, st: 'ENCERRAMENTO', cues: [[0.2, 'hit'], [3.6, 'finale']] },
   ];
