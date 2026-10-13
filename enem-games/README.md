@@ -1,6 +1,6 @@
 # ENEM GAMES 2026: vídeo do regulamento
 
-- `enem-games.mp4`: vídeo de 3:11 em 3D (1920x1080, com trilha e efeitos sonoros).
+- `enem-games.mp4`: vídeo de 3:11 em 3D (1920x1080, ~56 MB, com trilha e efeitos sonoros).
 - `enem-games.html`: player interativo, com o mesmo palco 3D em tempo real (WebGL; sem WebGL, cai para a versão 2D) (abrir no navegador): capítulos clicáveis, barra de tempo, som, tela cheia e um teste rápido de 8 perguntas que leva ao trecho certo do vídeo.
 
 ## Visual 3D

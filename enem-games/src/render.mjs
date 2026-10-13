@@ -71,5 +71,9 @@ const list = path.join(root, 'build', 'parts.txt');
 fs.writeFileSync(list, parts.map((p) => `file '${p}'`).join('\n'));
 await new Promise((res, rej) => spawn('ffmpeg', ['-y', '-loglevel', 'error', '-f', 'concat', '-safe', '0', '-i', list,
   '-i', path.join(root, 'build', 'trilha.wav'), '-c:v', 'copy', '-c:a', 'aac', '-b:a', '160k', '-shortest', '-movflags', '+faststart',
-  path.join(root, 'enem-games.mp4')], { stdio: 'inherit' }).on('close', (c) => (c ? rej(new Error('ffmpeg ' + c)) : res())));
+  path.join(root, 'build', 'master.mp4')], { stdio: 'inherit' }).on('close', (c) => (c ? rej(new Error('ffmpeg ' + c)) : res())));
+// versão final: tira o grão (que pesa muito na compressão) e limita a taxa para ~55 MB
+await new Promise((res, rej) => spawn('ffmpeg', ['-y', '-loglevel', 'error', '-i', path.join(root, 'build', 'master.mp4'),
+  '-vf', 'hqdn3d=2:2:8:8', '-c:v', 'libx264', '-preset', 'slow', '-crf', '23', '-maxrate', '2.2M', '-bufsize', '4.4M', '-pix_fmt', 'yuv420p',
+  '-c:a', 'copy', '-movflags', '+faststart', path.join(root, 'enem-games.mp4')], { stdio: 'inherit' }).on('close', (c) => (c ? rej(new Error('ffmpeg ' + c)) : res())));
 console.log('ok enem-games.mp4', Math.round((Date.now() - t0) / 1000) + 's');
