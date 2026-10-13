@@ -1,0 +1,210 @@
+<title>Enem Games 2026</title>
+<style>
+/* Layout: palco 16:9 centralizado, controles tipo placar logo abaixo, capítulos e quiz em seguida.
+   Visual de uma só noite (escuro) por escolha: é o mesmo mundo do vídeo. */
+/*@FONTS*/
+:root {
+  --night: #0b1230; --night2: #16214f; --line: #2b3a7a; --cream: #f7f1e3; --dim: #9aa6d6;
+  --amber: #ffb627; --coral: #ff5d5d; --ok: #3ddc84; --ink: #141c3f;
+  --display: "Bungee", Impact, sans-serif; --body: "Barlow Condensed", "Arial Narrow", sans-serif;
+  color-scheme: dark;
+}
+html, body { background: var(--night); color: var(--cream); }
+body { font-family: var(--body); font-size: 20px; line-height: 1.4; }
+.wrap { max-width: 1120px; margin: 0 auto; padding-inline: 16px; padding-block: 24px 48px; display: grid; gap: 20px; }
+header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px 20px; }
+h1 { font-family: var(--display); font-weight: 400; font-size: clamp(28px, 5vw, 44px); margin: 0; color: var(--amber); letter-spacing: 1px; }
+header p { margin: 0; color: var(--dim); font-size: 22px; }
+.stage { position: relative; width: 100%; aspect-ratio: 16 / 9; max-width: 100%; border-radius: 14px; overflow: hidden; background: var(--night); box-shadow: 0 0 0 2px var(--line); cursor: pointer; }
+.stage canvas { width: 100%; height: 100%; display: block; }
+.big-play { position: absolute; inset: 0; display: grid; place-items: center; background: rgba(11,18,48,0.35); border: 0; color: var(--ink); cursor: pointer; }
+.big-play span { font-family: var(--display); font-size: clamp(16px, 2.6vw, 26px); background: var(--amber); padding: 14px 28px; border-radius: 999px; }
+.controls { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+button { font-family: var(--body); font-weight: 700; font-size: 20px; color: var(--cream); background: var(--night2); border: 2px solid var(--line); border-radius: 999px; padding: 6px 16px; cursor: pointer; }
+button:hover { border-color: var(--amber); }
+button:focus-visible, input:focus-visible { outline: 3px solid var(--amber); outline-offset: 2px; }
+#play { background: var(--amber); color: var(--ink); border-color: var(--amber); min-width: 108px; }
+.time { font-family: var(--display); font-size: 18px; font-variant-numeric: tabular-nums; color: var(--dim); }
+.scrub { flex: 1 1 260px; min-width: 0; accent-color: var(--amber); }
+.chapters { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+.chapters button { border-radius: 12px; text-align: left; display: grid; gap: 2px; padding: 10px 14px; }
+.chapters small { font-family: var(--display); font-size: 12px; color: var(--dim); font-weight: 400; }
+.chapters button[aria-current="true"] { background: var(--amber); color: var(--ink); border-color: var(--amber); }
+.chapters button[aria-current="true"] small { color: var(--ink); }
+@media (max-width: 640px) { .chapters { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+section.quiz { display: grid; gap: 14px; margin-top: 12px; }
+h2 { font-family: var(--display); font-weight: 400; font-size: 24px; margin: 0; letter-spacing: 1px; text-wrap: balance; }
+.quiz > p { margin: 0; color: var(--dim); }
+.q { background: var(--night2); border-radius: 16px; padding: 16px 18px; display: grid; gap: 10px; }
+.q h3 { margin: 0; font-size: 24px; font-weight: 700; text-wrap: balance; }
+.opts { display: flex; flex-wrap: wrap; gap: 8px; }
+.opts button { border-radius: 12px; text-align: left; }
+.opts button.right { background: var(--ok); color: var(--ink); border-color: var(--ok); }
+.opts button.wrong { border-color: var(--coral); color: var(--coral); }
+.fb { margin: 0; min-height: 1.4em; color: var(--dim); }
+.fb button { font-size: 17px; padding: 2px 12px; margin-left: 8px; }
+.score { font-family: var(--display); color: var(--amber); font-size: 18px; }
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>ENEM GAMES 2026</h1>
+    <p>Como vai funcionar a noite, em 1 minuto</p>
+  </header>
+
+  <div class="stage" id="stage">
+    <canvas id="cv" width="1280" height="720" aria-label="Animação explicando o regulamento do Enem Games"></canvas>
+    <button class="big-play" id="bigplay" aria-label="Assistir"><span>▶ ASSISTIR</span></button>
+  </div>
+
+  <div class="controls">
+    <button id="play" type="button">▶ Play</button>
+    <span class="time" id="time">0:00 / 1:00</span>
+    <input class="scrub" id="scrub" type="range" min="0" max="60" step="0.01" value="0" aria-label="Posição no vídeo">
+    <button id="sound" type="button" aria-pressed="true">Som: ligado</button>
+    <button id="fs" type="button">Tela cheia</button>
+  </div>
+
+  <nav class="chapters" id="chapters" aria-label="Capítulos"></nav>
+
+  <section class="quiz" aria-labelledby="quiz-title">
+    <h2 id="quiz-title">Entendeu as regras? Teste rápido</h2>
+    <p>Responda e, se errar, pule direto para o trecho do vídeo que explica. <span class="score" id="score"></span></p>
+    <div id="quiz"></div>
+  </section>
+</div>
+
+<audio id="audio" preload="auto" src="@AUDIO_SRC@"></audio>
+
+<script>
+/*@SCENES*/
+</script>
+<script>
+(function () {
+  const G = window.EnemGames;
+  const cv = document.getElementById('cv');
+  const ctx = cv.getContext('2d');
+  const audio = document.getElementById('audio');
+  const playBtn = document.getElementById('play');
+  const bigPlay = document.getElementById('bigplay');
+  const scrub = document.getElementById('scrub');
+  const timeEl = document.getElementById('time');
+  const soundBtn = document.getElementById('sound');
+  const chapEl = document.getElementById('chapters');
+  let t = 0, playing = false, last = 0, soundOn = true, scale = 1;
+
+  function resize() {
+    const r = cv.getBoundingClientRect();
+    scale = Math.min(2, Math.max(1, (r.width * (window.devicePixelRatio || 1)) / G.W));
+    cv.width = Math.round(G.W * scale); cv.height = Math.round(G.H * scale);
+    draw();
+  }
+  function draw() { ctx.setTransform(scale, 0, 0, scale, 0, 0); G.render(ctx, t); }
+  const fmt = (s) => Math.floor(s / 60) + ':' + String(Math.floor(s % 60)).padStart(2, '0');
+
+  const chapBtns = G.CHAPTERS.map((c, i) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.innerHTML = `<small>${fmt(c.a)}</small>${c.n}`;
+    b.addEventListener('click', () => seek(c.a + 0.01, true));
+    chapEl.appendChild(b);
+    return b;
+  });
+  function ui() {
+    scrub.value = t;
+    timeEl.textContent = fmt(t) + ' / 1:00';
+    playBtn.textContent = playing ? '❚❚ Pausar' : (t >= G.DUR ? '↺ De novo' : '▶ Play');
+    bigPlay.hidden = playing || (t > 0 && t < G.DUR);
+    let ci = 0; G.CHAPTERS.forEach((c, i) => { if (t >= c.a) ci = i; });
+    chapBtns.forEach((b, i) => b.setAttribute('aria-current', i === ci ? 'true' : 'false'));
+  }
+  function syncAudio() {
+    if (!audio.src || audio.src.endsWith('@AUDIO_SRC@')) return;
+    try {
+      audio.muted = !soundOn;
+      if (Math.abs(audio.currentTime - t) > 0.25) audio.currentTime = t;
+      if (playing) { const pr = audio.play(); if (pr) pr.catch(() => {}); } else audio.pause();
+    } catch (e) {}
+  }
+  function play() {
+    if (t >= G.DUR) t = 0;
+    playing = true; last = performance.now(); syncAudio(); ui(); requestAnimationFrame(loop);
+  }
+  function pause() { playing = false; syncAudio(); ui(); }
+  function seek(nt, andPlay) { t = Math.max(0, Math.min(G.DUR, nt)); draw(); if (andPlay) play(); else { syncAudio(); ui(); } }
+  function loop(now) {
+    if (!playing) return;
+    t += (now - last) / 1000; last = now;
+    if (t >= G.DUR) { t = G.DUR; playing = false; syncAudio(); }
+    draw(); ui();
+    if (playing) requestAnimationFrame(loop);
+  }
+  playBtn.addEventListener('click', () => (playing ? pause() : play()));
+  bigPlay.addEventListener('click', (e) => { e.stopPropagation(); play(); });
+  document.getElementById('stage').addEventListener('click', () => (playing ? pause() : play()));
+  scrub.addEventListener('input', () => { t = +scrub.value; draw(); ui(); });
+  scrub.addEventListener('change', syncAudio);
+  soundBtn.addEventListener('click', () => {
+    soundOn = !soundOn; soundBtn.textContent = 'Som: ' + (soundOn ? 'ligado' : 'desligado');
+    soundBtn.setAttribute('aria-pressed', String(soundOn)); syncAudio();
+  });
+  document.getElementById('fs').addEventListener('click', () => {
+    const st = document.getElementById('stage');
+    try { const r = st.requestFullscreen && st.requestFullscreen(); if (r) r.catch(() => {}); } catch (e) {}
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.target.closest('button, input')) return;
+    if (e.code === 'Space') { e.preventDefault(); playing ? pause() : play(); }
+    if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+      let ci = 0; G.CHAPTERS.forEach((c, i) => { if (t >= c.a) ci = i; });
+      const ni = Math.max(0, Math.min(G.CHAPTERS.length - 1, ci + (e.key === 'ArrowRight' ? 1 : -1)));
+      seek(G.CHAPTERS[ni].a + 0.01, playing);
+    }
+  });
+
+  // ----- quiz -----
+  const QUIZ = [
+    { q: 'Sua equipe não terminou o desafio em 10 minutos. E agora?', o: ['Continua até terminar', 'Sai e espera 10 min, ou cede a vaga e volta depois', 'Perde o desafio para sempre'], r: 1, ch: 4, why: 'Art. 12: Opção 1 (esperar 10 min) ou Opção 2 (esperar a outra equipe usar a vaga).' },
+    { q: 'Quando a equipe pode fazer o desafio esportivo de Matemática?', o: ['A qualquer momento', 'Só depois do desafio acadêmico de Matemática', 'Só no final da noite'], r: 1, ch: 2, why: 'Art. 5: o esportivo exige o acadêmico da mesma área.' },
+    { q: 'Quantas equipes podem estar ao mesmo tempo num mesmo desafio?', o: ['1', '2', 'Quantas couberem'], r: 1, ch: 4, why: 'Art. 11: no máximo 2 equipes por espaço.' },
+    { q: 'Quem vence o ENEM GAMES?', o: ['Quem fizer mais desafios', 'Quem concluir tudo no menor tempo total', 'Quem chegar primeiro às 18h'], r: 1, ch: 6, why: 'Art. 17: campeã é quem conclui todos os desafios no menor tempo acumulado.' },
+    { q: 'Um colega quer ir sozinho buscar água no meio do desafio. Pode?', o: ['Pode, é rapidinho', 'Não: a equipe circula sempre completa'], r: 1, ch: 5, why: 'Art. 10, § 1º: ninguém atua de forma isolada.' },
+  ];
+  const quizEl = document.getElementById('quiz');
+  const scoreEl = document.getElementById('score');
+  const answered = new Map();
+  function score() {
+    const ok = [...answered.values()].filter(Boolean).length;
+    scoreEl.textContent = answered.size ? `${ok}/${QUIZ.length} certas` : '';
+  }
+  QUIZ.forEach((item, qi) => {
+    const box = document.createElement('div'); box.className = 'q';
+    box.innerHTML = `<h3>${qi + 1}. ${item.q}</h3><div class="opts"></div><p class="fb" aria-live="polite"></p>`;
+    const opts = box.querySelector('.opts'), fb = box.querySelector('.fb');
+    item.o.forEach((txt, oi) => {
+      const b = document.createElement('button'); b.type = 'button'; b.id = `q${qi}o${oi}`; b.textContent = txt;
+      b.addEventListener('click', () => {
+        opts.querySelectorAll('button').forEach((x) => x.classList.remove('right', 'wrong'));
+        const ok = oi === item.r;
+        b.classList.add(ok ? 'right' : 'wrong');
+        if (!ok) opts.children[item.r].classList.add('right');
+        answered.set(qi, ok); score();
+        fb.textContent = (ok ? 'Isso! ' : 'Quase. ') + item.why;
+        const go = document.createElement('button'); go.type = 'button'; go.textContent = '▶ ver no vídeo';
+        go.addEventListener('click', () => { seek(G.CHAPTERS[item.ch].a + 0.01, true); document.getElementById('stage').scrollIntoView({ behavior: 'smooth', block: 'center' }); });
+        fb.appendChild(go);
+      });
+      opts.appendChild(b);
+    });
+    quizEl.appendChild(box);
+  });
+
+  window.addEventListener('resize', resize);
+  // quadro inicial: título já montado, para a miniatura não ficar vazia
+  t = 0; resize(); t = 3.2; draw(); t = 0; ui(); ctx.setTransform(scale, 0, 0, scale, 0, 0); G.render(ctx, 3.2);
+  bigPlay.hidden = false;
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { if (!playing && t === 0) G.render(ctx, 3.2); });
+  window.__renderAt = (tt, sc) => { cv.width = G.W * sc; cv.height = G.H * sc; ctx.setTransform(sc, 0, 0, sc, 0, 0); G.render(ctx, tt); return cv.toDataURL('image/png'); };
+})();
+</script>
